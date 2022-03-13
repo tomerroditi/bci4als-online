@@ -87,4 +87,13 @@ display(['EEGNet has finish training!' newline ...
     sprintf('train accuray is: %.3f',train_accuracy) newline ...
     sprintf('test accuray is: %.3f',test_accuracy)]);
 
+% plot confusion matrices
+C_train = confusionmat(train_lab,train_pred);
+C_test = confusionmat(test_lab,test_pred);
+figure('train confusion matrix');
+confusionchart(C_train);
+figure('test confusion matrix');
+confusionchart(C_test);
+
+
 end
