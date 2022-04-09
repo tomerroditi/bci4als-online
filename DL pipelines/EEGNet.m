@@ -34,24 +34,27 @@ input_size = input_size(1:3);
 
 % define the network layers
 layers = [
-    imageInputLayer(input_size,"Name","imageinput")
-    convolution2dLayer([1 64],8,"Name","temporal conv2D","Padding","same")
-    batchNormalizationLayer("Name","batchnorm_1")
-    groupedConvolution2dLayer([16 1],2,"channel-wise","Name","groupedconv_1","Padding","same","Stride",[16 1])
-    batchNormalizationLayer("Name","batchnorm_2")
-    eluLayer(1,"Name","elu_1")
-    averagePooling2dLayer([1 4],"Name","avgpool2d_1","Padding","same","Stride",[1 4])
-    dropoutLayer(0.5,"Name","dropout_1")
-    groupedConvolution2dLayer([1 16],1,"channel-wise","Name","groupedconv_2","Padding","same")
-    groupedConvolution2dLayer([1 1],16,1,"Name","groupedconv_3","Padding","same")
-    batchNormalizationLayer("Name","batchnorm_3")
-    eluLayer(1,"Name","elu_2")
-    averagePooling2dLayer([1 8],"Name","avgpool2d_2","Padding","same","Stride",[1 8])
-    dropoutLayer(0.5,"Name","dropout_2")
-    spaceToDepthLayer([1 1],"Name","spaceToDepth")
-    fullyConnectedLayer(3,"Name","fc")
-    softmaxLayer("Name","softmax")
-    classificationLayer("Name","classoutput")];
+    imageInputLayer(input_size)
+    convolution2dLayer([1 64],8,"Padding","same")
+    batchNormalizationLayer
+    groupedConvolution2dLayer([input_size(1) 1],2,"channel-wise")
+    batchNormalizationLayer
+    eluLayer
+    averagePooling2dLayer([1 4],"Stride",[1 4])
+    dropoutLayer(0.5)
+    groupedConvolution2dLayer([1 16],1,"channel-wise","Padding","same")
+    convolution2dLayer(1,16,"Padding","same")
+    batchNormalizationLayer
+    eluLayer
+    averagePooling2dLayer([1 8],"Stride",[1 8])
+    dropoutLayer(0.25)
+%     spaceToDepthLayer([1 19])
+    fullyConnectedLayer(3)
+    softmaxLayer
+    classificationLayer];
+
+% display the network
+% analyzeNetwork(layers)
 
 % define the target vectors for train and validation sets
 response_val = categorical(val_lab.'); % define the labels vector as categorical
@@ -62,37 +65,41 @@ response_train = categorical(train_lab.'); % define the labels vector as categor
 options = trainingOptions('adam', ...  
     'Plots','training-progress', ...
     'Verbose', true, ...
-    'VerboseFrequency',100, ...
-    'MaxEpochs', 1200, ...
-    'MiniBatchSize',45, ...
+    'VerboseFrequency',50, ...
+    'MaxEpochs', 300, ...
+    'MiniBatchSize',300, ...
     'Shuffle','every-epoch', ...
     'ValidationData', {val_data, response_val}, ...
-    'ValidationFrequency', 30, ...
-    'OutputNetwork', 'last-iteration');
+    'ValidationFrequency', 50, ...
+    'OutputNetwork', 'best-validation-loss');
 
 % train the network
 eegnet = trainNetwork(train_data, response_train, layers, options);
 
 % compute and display the accuracy of the model on the test and train sets
 train_pred = predict(eegnet, train_data);
+val_pred = predict(eegnet, val_data);
 test_pred = predict(eegnet, test_data);
 
 [~,train_pred] = max(train_pred,[],2);
+[~,val_pred] = max(val_pred,[],2);
 [~,test_pred] = max(test_pred,[],2);
 
 train_accuracy = sum((train_pred.' - train_lab) == 0)/length(train_lab);
+val_accuracy = sum((val_pred.' - val_lab) == 0)/length(val_lab);
 test_accuracy = sum((test_pred.' - test_lab) == 0)/length(test_lab);
 
 display(['EEGNet has finish training!' newline ...
     sprintf('train accuray is: %.3f',train_accuracy) newline ...
+    sprintf('validation accuray is: %.3f',val_accuracy) newline ...
     sprintf('test accuray is: %.3f',test_accuracy)]);
 
 % plot confusion matrices
 C_train = confusionmat(train_lab,train_pred);
 C_test = confusionmat(test_lab,test_pred);
-figure('train confusion matrix');
+figure('Name', 'train confusion matrix');
 confusionchart(C_train);
-figure('test confusion matrix');
+figure('Name', 'test confusion matrix');
 confusionchart(C_test);
 
 
