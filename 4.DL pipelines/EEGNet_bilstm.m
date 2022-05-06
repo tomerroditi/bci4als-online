@@ -1,7 +1,7 @@
-function eegnet_lstm = EEGNet_lstm(train_ds, val_ds, constants)
+function eegnet_bilstm = EEGNet_bilstm(train_ds, val_ds, constants)
 % this function generate and train the Deep network presented in the paper 
 % "EEGNet: A Compact Convolutional Neural Network for EEG-based 
-% Brain-Computer Interfaces", with an additional lstm kayer, and returns
+% Brain-Computer Interfaces", with an additional bilstm kayer, and returns
 % the trained model.
 % pdf of the paper - https://arxiv.org/pdf/1611.08024v4.pdf
 % code from the paper - https://github.com/vlawhern/arl-eegmodels
@@ -12,7 +12,7 @@ function eegnet_lstm = EEGNet_lstm(train_ds, val_ds, constants)
 %   constants: a structure contains the constants of the pipeline.
 %
 % Output:
-%   eegnet_lstm: the trained EEGNet model
+%   eegnet_bilstm: the trained EEGNet model
 %
 
 % extract the input dimentions for the input layer
@@ -38,7 +38,7 @@ layers = [
     dropoutLayer(0.5)
     sequenceUnfoldingLayer()
     flattenLayer()
-    lstmLayer(128, "OutputMode","last")
+    bilstmLayer(128, "OutputMode","last")
     dropoutLayer(0.25)
     fullyConnectedLayer(3)
     softmaxLayer()
@@ -69,6 +69,6 @@ options = trainingOptions('adam', ...
     'OutputNetwork', 'last-iteration');
 
 % train the network
-eegnet_lstm = trainNetwork(train_ds, layers, options);
+eegnet_bilstm = trainNetwork(train_ds, layers, options);
 
 end
