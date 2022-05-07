@@ -10,6 +10,9 @@ classdef multi_recording < handle & matlab.mixin.Copyable & recording
         % define the object
         function obj = multi_recording(recordings)
             if nargin > 0  % support an empty class members
+                if isempty(recordings)
+                    return
+                end
                 % concatenate all the relevant data
                 obj.segments = []; obj.labels = []; obj.supp_vec = []; obj.sample_time = []; obj.rec_idx = [];
                 obj.path = {}; obj.Name = {}; obj.markers = {};

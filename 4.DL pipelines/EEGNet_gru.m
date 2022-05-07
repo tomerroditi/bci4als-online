@@ -1,4 +1,4 @@
-function eegnet_lstm = EEGNet_lstm(train_ds, val_ds, constants)
+function eegnet_gru = EEGNet_gru(train_ds, val_ds, constants)
 % this function generate and train the Deep network presented in the paper 
 % "EEGNet: A Compact Convolutional Neural Network for EEG-based 
 % Brain-Computer Interfaces", with an additional lstm kayer, and returns
@@ -38,7 +38,7 @@ layers = [
     dropoutLayer(0.5)
     sequenceUnfoldingLayer()
     flattenLayer()
-    lstmLayer(128, "OutputMode","last")
+    gruLayer(128, "OutputMode","last")
     dropoutLayer(0.25)
     fullyConnectedLayer(3)
     softmaxLayer()
@@ -69,6 +69,6 @@ options = trainingOptions('adam', ...
     'OutputNetwork', 'last-iteration');
 
 % train the network
-eegnet_lstm = trainNetwork(train_ds, layers, options);
+eegnet_gru = trainNetwork(train_ds, layers, options);
 
 end

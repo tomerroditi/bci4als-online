@@ -30,14 +30,14 @@ options.test_split_ratio = 0.1;          % percent of the data which will go to 
 options.val_split_ratio  = 0.1;          % percent of the data which will go to the test set - if set to 0 val set isn't created
 options.cross_rec        = false;        % true - test and train share recordings, false - tests are a different recordings then train
 options.feat_or_data     = 'data';       % return "train" as data or features
-options.model_algo       = 'EEGNet';     % ML model to train, choose from {'EEGNet', 'EEGNet_lstm','SVM', 'ADABOOST', 'LDA'}
+options.model_algo       = 'EEGNet_gru';     % ML model to train, choose from {'EEGNet','EEGNet_stft','EEGNet_lstm','EEGNet_bilstm','EEGNet_gru','EEGNet_lstm_stft','EEGNet_bilstm_stft','EEGNet_gru_stft','SVM', 'ADABOOST', 'LDA'}
 options.feat_alg         = 'wavelet';    % feature extraction algorithm, choose from {'basic', 'wavelet'}
-options.cont_or_disc     = 'discrete';   % segmentation type choose from {'discrete', 'continuous'}
+options.cont_or_disc     = 'continuous';   % segmentation type choose from {'discrete', 'continuous'}
 options.seg_dur          = 5;            % segments duration in seconds
-options.overlap          = 4.5;          % following segments overlapping duration in seconds
+options.overlap          = 4;          % following segments overlapping duration in seconds
 options.threshold        = 0.7;          % threshold for labeling in continuous segmentation - percentage of the window containing the class (0-1)
-options.sequence_len     = 7;            % length of a sequence to enter in sequence DL models
-options.resample         = [0,0,0];      % resample size for each class [class1, class2, class3]
+options.sequence_len     = 4;            % length of a sequence to enter in sequence DL models
+options.resample         = [0,3,3];      % resample size for each class [class1, class2, class3]
 options.constants        = constants();  % a class member with constants that are used in the pipeline 
 
 %% preprocess the data into train, test and validation sets
@@ -79,7 +79,7 @@ model = train_my_model(options.model_algo, options.constants, ...
     "train_ds", train_rsmpl_aug.data_store, "val_ds", val.data_store);
 
 %% set working points and evaluate the model on all data stores
-[~, thresh] = test.evaluate(model, CM_title = 'test', print = true);
+test.evaluate(model, CM_title = 'test', print = true);
 val.evaluate(model, CM_title = 'val', print = true);
 train.evaluate(model, CM_title = 'train', print = true);
 
@@ -91,7 +91,7 @@ test.visualize("title", 'test');
 %% save the model its settings and the recordings names that were used to create it
 mdl_struct.options = options;
 mdl_struct.model = model;
-mdl_struct.test_names = test.Name;
+mdl_struct.test_name = test.Name;
 mdl_struct.val_name = val.Name;
 mdl_struct.train_name = train.Name;
 uisave('mdl_struct', 'mdl_struct');

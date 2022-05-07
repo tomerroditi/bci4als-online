@@ -1,4 +1,4 @@
-function eegnet = EEGNet(train_ds, val_ds, constants)
+function eegnet_stft = EEGNet_stft(train_ds, val_ds, constants)
 % this function generate and train the Deep network presented in the paper 
 % "EEGNet: A Compact Convolutional Neural Network for EEG-based 
 % Brain-Computer Interfaces", with an additional lstm kayer, and returns
@@ -26,7 +26,7 @@ end
 
 % define the network layers
 layers = [
-    imageInputLayer(input_size, 'Normalization','none')
+    imageInputLayer(input_size, 'Normalization','none', 'Name', 'input')
     convolution2dLayer([1 64],8,"Padding","same")
     batchNormalizationLayer
     groupedConvolution2dLayer([input_size(1) 1],2,"channel-wise")
@@ -39,10 +39,34 @@ layers = [
     batchNormalizationLayer
     eluLayer
     averagePooling2dLayer([1 8],"Stride",[1 8])
+    dropoutLayer(0.25, 'Name', 'drop1')];
+
+layers_stft = [
+    PermuteStftLayer(Name = 'Permute')
+    stftLayer('Window', rectwin(128), 'OverlapLength', 100,"OutputMode", "spatial")
     dropoutLayer(0.25)
-    fullyConnectedLayer(3)
-    softmaxLayer
-    classificationLayer];
+    groupedConvolution2dLayer([65 1], 4, 'channel-wise') % window_size/2 + 1 = N_DFT_points
+    batchNormalizationLayer()
+    eluLayer(1)
+    convolution2dLayer([1 4], 8, 'Padding','same','Stride', [1 2])
+    batchNormalizationLayer()
+    eluLayer(1)
+    averagePooling2dLayer([1 2], "Stride", [1 2])
+    dropoutLayer(0.25, 'Name', 'drop2')];
+
+layers_out = [
+        flat_cat('Name', 'flatten')
+        fullyConnectedLayer(3)
+        softmaxLayer
+        classificationLayer];
+
+layers = layerGraph(layers);
+layers = addLayers(layers, layers_stft);
+layers = addLayers(layers, layers_out);
+layers = connectLayers(layers, "input", "Permute");
+layers = connectLayers(layers, "drop1", "flatten/in1");
+layers = connectLayers(layers, "drop2", "flatten/in2");
+
 
 % display the network
 % analyzeNetwork(layers)
@@ -64,6 +88,6 @@ options = trainingOptions('adam', ...
     'OutputNetwork', 'last-iteration');
 
 % train the network
-eegnet = trainNetwork(train_ds, layers, options);
+eegnet_stft = trainNetwork(train_ds, layers, options);
 
 end

@@ -28,7 +28,10 @@ model = mdl_struct.model;
 constants = options.constants;
 
 %% create a multi_recording class object from the paths and options
-all_rec = paths2Mrec(data_paths); % create a class member from all paths
+all_rec = paths2Mrec(data_paths, options); % create a class member from all paths
+
+disp('test recordings are:'); disp(mdl_struct.test_names);
+disp('validation recordings are:'); disp(mdl_struct.val_name);
 
 %% predict data classes and visualize the results
 all_rec.create_ds; % create a data store
