@@ -14,23 +14,23 @@ function [] = plot_weights(model, used_electrodes)
         subplot(3,nTemporalFilters,indTempFilter)
         weigtsTemporal = temporalFilterWeights(:,:,1,indTempFilter);
         % calculate X axis ticks
-        transformedWs = fft(weigtsTemporal);
+        transformedWs = abs(fft(weigtsTemporal));
         % we have X data points, so we are limited in our ability to
         % present frequency domain information
         fs = szTemporal(2);
         % run transform fourier to get the weight per freq
         freqs = (0:length(transformedWs)-1)*fs/length(transformedWs);
-        % Nyquist freq limitation
+        % remove redundand mirror image of freqs
         transformedWs = transformedWs(1:length(transformedWs) /2);
         freqs = freqs (1:length(freqs) /2);
         % plot the weights per frequency
         plot(freqs,transformedWs)
         % this limit is pretty arbitrary, yet we want to keep all plots up
         % to the same scale
-        ylim([-1.5 2])
+        ylim([0 2.5])
         xticks([freqs(1) freqs(length(freqs)/2) freqs(end)]);
         xlabel('Frequency (Hz)')
-        ylabel('Weight')
+        ylabel('Amp')
         title(strcat('Temporal Filter=', num2str(indTempFilter)));
         % inner loop - for each temporal filter, go over the spatial
         % filters
