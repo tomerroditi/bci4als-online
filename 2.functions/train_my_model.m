@@ -33,6 +33,8 @@ warning('off');
 % train the desired model
 if strcmp(algo, 'EEGNet')
     model = EEGNet(options.train_ds, options.val_ds, constants);
+elseif strcmp(algo, 'EEG_stft')
+    model = EEG_stft(options.train_ds, options.val_ds, constants);
 elseif strcmp(algo, 'EEGNet_stft')
     model = EEGNet_stft(options.train_ds, options.val_ds, constants);
 elseif strcmp(algo, 'EEG_AE')

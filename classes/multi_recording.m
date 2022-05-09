@@ -3,6 +3,9 @@ classdef multi_recording < handle & matlab.mixin.Copyable & recording
         rec_idx
         recordings
         num_rec
+    end
+
+    properties (Access = public)
         group
     end
 
@@ -70,13 +73,20 @@ classdef multi_recording < handle & matlab.mixin.Copyable & recording
                 options.criterion_thresh = [];
                 options.print = true;
             end
+            if ~isempty(obj.group) % give a proper title according to the group name
+                options.CM_title = [obj.group ' data'];
+            end
             % evaluate for the multi_recording
             [pred, thresh, CM] = evaluate@recording(obj, model, CM_title = options.CM_title, ...
                     criterion = options.criterion, criterion_thresh = options.criterion_thresh, ...
                     thres_C1 = options.thres_C1, print = options.print);
-            % evaluate for recordings without printing
-            options.print = false;
-            for i = 1:obj.num_rec
+            % evaluate for recordings with or without printing
+            for i = 1:length(obj.recordings)
+                if isa(obj.recordings{i}, 'multi_recording')
+                    options.print = true;
+                else
+                    options.print = false;
+                end
                 obj.recordings{i}.evaluate(model, CM_title = options.CM_title, ...
                     criterion = options.criterion, criterion_thresh = options.criterion_thresh, ...
                     thres_C1 = options.thres_C1, print = options.print);

@@ -1,4 +1,4 @@
-function [segments, labels, sup_vec, seg_time_sampled, EEG_chans] = MI2_SegmentData(recordingFolder, cont_or_disc, seg_dur, overlap, thresh, constants)
+function [segments, labels, sup_vec, seg_time_sampled, EEG_chans] = MI2_SegmentData(recordingFolder, cont_or_disc, seg_dur, overlap, thresh, my_constants)
 % Segment data using markers
 % This function segments the continuous data into trials or epochs creating
 % a 3D matrix where dimentions are - [trial, channels, time (data samples)]
@@ -28,8 +28,9 @@ recordingFile = strcat(recordingFolder, '\', 'EEG.XDF'); %#ok<*NASGU>
 labels = load(strcat(recordingFolder, '\labels.mat'), 'labels'); % load the labels vector 
 labels = labels.labels;
 
-% define the channels names     
-[~, EEG] = evalc("pop_chanedit(EEG, 'load',{constants.channel_loc_path,'filetype','autodetect'},'rplurchanloc',1)"); % using evalc function to suppress any printing from eeglab functions
+% define the channels names 
+C = constants(); % need this to get local path of electrodes locations and names
+[~, EEG] = evalc("pop_chanedit(EEG, 'load',{C.channel_loc_path,'filetype','autodetect'},'rplurchanloc',1)"); % using evalc function to suppress any printing from eeglab functions
 EEG_chans = transpose(string({EEG.chanlocs(:).labels}));
 
 % extract the events and data
@@ -37,11 +38,11 @@ EEG_event = EEG.event;
 EEG_data = EEG.data;
 
 % remove unwanted channels
-EEG_data(constants.PREPROCESS_BAD_ELECTRODES,:) = [];
+EEG_data(my_constants.PREPROCESS_BAD_ELECTRODES,:) = [];
 
 % update the EEG structure
 EEG.data = EEG_data;
-EEG.nbchan = EEG.nbchan - length(constants.PREPROCESS_BAD_ELECTRODES);
+EEG.nbchan = EEG.nbchan - length(my_constants.PREPROCESS_BAD_ELECTRODES);
 
 % check for inconsistencies in the events data and the labels vector
 num_labels = length(labels);   % derive number of trials from training label vector
@@ -64,9 +65,9 @@ end
 segments = []; sup_vec = []; seg_time_sampled = []; % initialize empty arrays
 numChans = EEG.nbchan;  % number of channels 
 if strcmp(cont_or_disc, 'discrete')
-    [segments, labels, sup_vec, seg_time_sampled] = segment_discrete(EEG, seg_dur, constants);
+    [segments, labels, sup_vec, seg_time_sampled] = segment_discrete(EEG, seg_dur, my_constants);
 elseif strcmp(cont_or_disc, 'continuous')
-    [segments, labels, sup_vec, seg_time_sampled] = segment_continouos(EEG, seg_dur, overlap, thresh, constants);
+    [segments, labels, sup_vec, seg_time_sampled] = segment_continouos(EEG, seg_dur, overlap, thresh, my_constants);
 end
 segments = permute(segments, [1,2,4,3]);
 end

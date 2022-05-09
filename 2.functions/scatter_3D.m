@@ -9,6 +9,10 @@ scatter3(data(labels == 3,1), data(labels == 3,2), data(labels == 3,3), 'g'); ho
 legend({'class 1 - idle', 'class 2 - left', 'class 3 - right'});
 drawnow
 
+if ~isa(recording, 'multi_recording') % keep going only if its a multi recording object
+    return
+end
+
 % mark a specific recording in the cluster
 while true
     % input message
@@ -21,6 +25,10 @@ while true
     % determine who is rec variable
     if isa(recording.recordings{in}, 'multi_recording')
         rec = recording.recordings{in};
+        if isempty(rec.recordings)
+            disp('you selected an empty recording, pls select a different one next time.');
+            continue
+        end
         group_name = rec.group;  % specify 'train' 'val' 'test' for plots title
         % keep getting into multi recordings if its a nested multi recording
         % untill getting to a recording class object

@@ -65,7 +65,7 @@ classdef recording < handle & matlab.mixin.Copyable
             end
         end
             
-        % create a data set from the obj segments and labels
+        % create a data store from the obj segments and labels
         function create_ds(obj) 
             if ~isempty(obj.segments) && ~isempty(obj.labels)
                 obj.data_store = set2ds(obj.segments, obj.labels, obj.constants);
@@ -97,6 +97,9 @@ classdef recording < handle & matlab.mixin.Copyable
                 options.criterion = [];
                 options.criterion_thresh = [];
                 options.print = false;
+            end
+            if isempty(obj.data_store)
+                obj.create_ds;
             end
             if ~isempty(obj.data_store)
                 [pred, thresh, CM] = evaluation(model, obj.data_store, CM_title = options.CM_title, ...
