@@ -26,9 +26,34 @@ uiopen("load")
 options = mdl_struct.options;
 model = mdl_struct.model;
 constants = options.constants;
+val_name = mdl_struct.val_name;
+train_name = mdl_struct.train_name;
+if isfield(mdl_struct, 'test_names')
+    test_name = mdl_struct.test_names;
+else
+    test_name = mdl_struct.test_name;
+end
+
+
+%% create a multi recording object for each set
+val_paths = names2paths(val_name);
+test_paths = names2paths(test_name);
+train_paths = names2paths(train_name);
+
+train = paths2Mrec(train_paths, options); % create a class member for train
+val = paths2Mrec(val_paths, options); % create a class member for val
+test = paths2Mrec(test_paths, options); % create a class member for test
+new = paths2Mrec(data_paths(~ismember(data_paths, cat(1, train_paths, val_paths, test_paths))), options); % create a class member for new recordings 
+train.group = 'train'; val.group = 'val'; test.group = 'test'; new.group = 'new'; % give each group a name
 
 %% create a multi_recording class object from the paths and options
-all_rec = paths2Mrec(data_paths); % create a class member from all paths
+all_rec = multi_recording({train, val, test, new}); % create a class member from all paths
+
+disp('train recordings are:'); disp(sort(train.Name));
+disp('validation recordings are:'); disp(sort(val.Name));
+disp('test recordings are:'); disp(sort(test.Name));
+disp('new recordings are:'); disp(sort(new.Name));
+
 
 %% predict data classes and visualize the results
 all_rec.create_ds; % create a data store

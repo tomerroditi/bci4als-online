@@ -18,6 +18,7 @@ function eegnet_lstm = EEGNet_lstm(train_ds, val_ds, constants)
 % extract the input dimentions for the input layer
 input_samples = read(train_ds);
 input_size = size(input_samples{1,1});
+num_classes = length(unique(cellfun(@(X)double(X), input_samples(:,2))));
 
 % define the network layers
 layers = [
@@ -40,7 +41,7 @@ layers = [
     flattenLayer()
     lstmLayer(128, "OutputMode","last")
     dropoutLayer(0.25)
-    fullyConnectedLayer(3)
+    fullyConnectedLayer(num_classes)
     softmaxLayer()
     classificationLayer()];
 
@@ -49,7 +50,7 @@ layers = layerGraph(layers);
 layers = connectLayers(layers,"seqfold/miniBatchSize","sequnfold/miniBatchSize");
 
 % display the network
-% analyzeNetwork(layers);
+analyzeNetwork(layers);
 
 % set some training and optimization parameters - cant use parallel pool
 % since we have an LSTMLayer in the network

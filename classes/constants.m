@@ -25,7 +25,7 @@ classdef constants < handle
         NOTCH_WIDTH     = 0.5;     % the width of the notch filter
     
         % preprocessing settings and options
-        PREPROCESS_BAD_ELECTRODES  = [12,13,14,15,16]; % electrodes to remove
+        PREPROCESS_BAD_ELECTRODES  = []; % electrodes to remove
         PREPROCESS_NOISE_REJECTION = 0;       % automaticNoiseRejection
         PREPROCESS_AVG_REREF       = 0;       % automaticAverageReReference
         PREPROCESS_LAPLACIAN       = 0;       % 1 - use laplacian filtering, 0 - don't use
@@ -39,6 +39,9 @@ classdef constants < handle
         % electrodes names and locations
         electrode_num = [1,2,3,4,5,6,7,8,9,10,11];
         electrode_loc = {'C3','C4','Cz','FC1','FC2','FC5','FC6','CP1','CP2','CP5','CP6'};
+        
+        electrode_num_edf = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15];
+        elctrode_loc_edf = {'Pz','Cz','T6','T4','F8','P4','C4','F4','Fz','T5','T3','F7','P3','C3','F3'}
     end
     
     properties (Access = public)

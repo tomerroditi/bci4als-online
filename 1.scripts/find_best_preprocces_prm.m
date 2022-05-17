@@ -122,11 +122,6 @@ end
 
 
 
-%% visualize the network weights - try to explaine the network computations
-% temporal_conv_weights = model.Layers(3).Weights;
-
-
-
 
 
 

@@ -28,18 +28,34 @@ arguments
     options.save_path = '';
 end
 
+warning('off');
+
 % train the desired model
 if strcmp(algo, 'EEGNet')
     model = EEGNet(options.train_ds, options.val_ds, constants);
+elseif strcmp(algo, 'EEG_stft')
+    model = EEG_stft(options.train_ds, options.val_ds, constants);
+elseif strcmp(algo, 'EEGNet_stft')
+    model = EEGNet_stft(options.train_ds, options.val_ds, constants);
 elseif strcmp(algo, 'EEG_AE')
     model = eeg_AE(options.train_ds, options.val_ds, constants);
 elseif strcmp(algo, 'EEGNet_lstm')
     model = EEGNet_lstm(options.train_ds, options.val_ds, constants);
 elseif strcmp(algo, 'EEGNet_bilstm')
     model = EEGNet_bilstm(options.train_ds, options.val_ds, constants);
+elseif strcmp(algo, 'EEGNet_gru')
+    model = EEGNet_gru(options.train_ds, options.val_ds, constants);
+elseif strcmp(algo, 'EEGNet_lstm_stft')
+    model = EEGNet_lstm_stft(options.train_ds, options.val_ds, constants);
+elseif strcmp(algo, 'EEGNet_bilstm_stft')
+    model = EEGNet_bilstm_stft(options.train_ds, options.val_ds, constants);
+elseif strcmp(algo, 'EEGNet_gru_stft')
+    model = EEGNet_gru_stft(options.train_ds, options.val_ds, constants);
 else
     [selected_feat_idx]  = MI5_feature_selection(options.features, options.labels);
     options.features = options.features(:,selected_feat_idx);
     MI6_LearnModel(options.features, options.labels, algo, options.save);   
 end
+
+warning('on');
 end

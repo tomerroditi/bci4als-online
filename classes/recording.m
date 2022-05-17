@@ -15,11 +15,13 @@ classdef recording < handle & matlab.mixin.Copyable
         predictions
         fc_act
         mdl_output
+        file_type
     end
 
     methods
         % define the object
-        function obj = recording(file_path, options)  
+        function obj = recording(file_path, options)
+
             if nargin > 0
                 obj.path = file_path;
                 obj.options = options;
@@ -38,13 +40,24 @@ classdef recording < handle & matlab.mixin.Copyable
                 end
                 % set a name for the obj according to its file path
                 strs = split(file_path, '\');
-                obj.Name = [strs{end - 1}(5:end) ' - ' strs{end}];            
-                % load the raw data and events from the xdf file - using evalc function to suppress any printing from eeglab functions
-                [~, EEG] = evalc("pop_loadxdf([file_path '\EEG.xdf'], 'streamtype', 'EEG')");
-                obj.raw_data = EEG.data;
-                obj.markers = EEG.event;
+                obj.Name = [strs{end - 1}(5:end) ' - ' strs{end}];
+                % load the raw data and markers
+                if ~isempty(dir([file_path '\*.xdf']))
+                    obj.file_type = 'xdf';
+                    % load the raw data and events from the xdf file - using evalc function to suppress any printing from eeglab functions
+                    [~, EEG] = evalc("pop_loadxdf([file_path '\EEG.xdf'], 'streamtype', 'EEG')");
+                    obj.raw_data = EEG.data;
+                    obj.markers = EEG.event;
+                    labels = load(strcat(file_path, '\labels.mat'), 'labels'); % load the labels vector
+                    labels = labels.labels;
+                elseif ~isempty(dir([file_path '\*.edf'])) 
+                    obj.file_type = 'edf';
+                    [obj.raw_data, obj.markers, labels] = edf2data(file_path);
+                else
+                    error('Error. only {"xdf","edf"} file types are supported for loading data')
+                end
                 [segments, labels, obj.supp_vec, sample_time] = ...
-                    MI2_SegmentData(file_path, cont_or_disc, seg_dur, overlap, threshold, obj.constants); % create segments
+                    MI2_SegmentData(obj.raw_data, obj.markers, labels, cont_or_disc, seg_dur, overlap, threshold, obj.constants); % create segments
                 segments = MI3_Preprocess(segments, cont_or_disc, obj.constants); % filter the segments
                 if strcmp(feat_or_data, 'feat')
                     obj.features = get_features(segments, feat_alg); % create features if needed
@@ -65,7 +78,7 @@ classdef recording < handle & matlab.mixin.Copyable
             end
         end
             
-        % create a data set from the obj segments and labels
+        % create a data store from the obj segments and labels
         function create_ds(obj) 
             if ~isempty(obj.segments) && ~isempty(obj.labels)
                 obj.data_store = set2ds(obj.segments, obj.labels, obj.constants);
@@ -97,6 +110,9 @@ classdef recording < handle & matlab.mixin.Copyable
                 options.criterion = [];
                 options.criterion_thresh = [];
                 options.print = false;
+            end
+            if isempty(obj.data_store)
+                obj.create_ds;
             end
             if ~isempty(obj.data_store)
                 [pred, thresh, CM] = evaluation(model, obj.data_store, CM_title = options.CM_title, ...

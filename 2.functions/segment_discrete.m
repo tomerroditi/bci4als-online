@@ -1,9 +1,7 @@
-function [segments, labels, sup_vec, seg_time_sampled] = segment_discrete(EEGstruct, seg_dur, constants)
+function [segments, labels, sup_vec, seg_time_sampled] = segment_discrete(data, events, seg_dur, constants)
 
 % extract the times events and data from EEGstruc
-times = EEGstruct.times;
-events = squeeze(struct2cell(EEGstruct.event)).';
-data = EEGstruct.data;
+events = squeeze(struct2cell(events)).';
 marker_times = cell2mat(events(:,2));
 marker_sign = events(:,1);
 
@@ -16,7 +14,7 @@ segment_size = floor(seg_dur*Fs); % segments size
 % create a support vector containing the movement class in each timestamp
 % and an array of the time every segment ends
 seg_time_sampled_indices = marker_times(strcmp(marker_sign, '9.000000000000000'));
-times = (0:(length(times) - 1))./Fs;
+times = (0:(size(data,2) - 1))./Fs;
 seg_time_sampled = times(seg_time_sampled_indices);
 sup_vec = zeros(1,length(times));
 for j = 1:length(times)
