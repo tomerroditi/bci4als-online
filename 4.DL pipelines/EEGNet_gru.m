@@ -18,6 +18,7 @@ function eegnet_gru = EEGNet_gru(train_ds, val_ds, constants)
 % extract the input dimentions for the input layer
 input_samples = read(train_ds);
 input_size = size(input_samples{1,1});
+num_classes = length(unique(cellfun(@(X)double(X), input_samples(:,2))));
 
 % define the network layers
 layers = [
@@ -40,7 +41,7 @@ layers = [
     flattenLayer()
     gruLayer(128, "OutputMode","last")
     dropoutLayer(0.25)
-    fullyConnectedLayer(3)
+    fullyConnectedLayer(num_classes)
     softmaxLayer()
     classificationLayer()];
 

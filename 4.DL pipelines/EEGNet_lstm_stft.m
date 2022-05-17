@@ -18,6 +18,7 @@ function eegnet_lstm_stft = EEGNet_lstm_stft(train_ds, val_ds, constants)
 % extract the input dimentions for the input layer
 input_samples = read(train_ds);
 input_size = size(input_samples{1,1});
+num_classes = length(unique(cellfun(@(X)double(X), input_samples(:,2))));
 
 % define the network layers
 layers_input = [    
@@ -60,7 +61,7 @@ layers_lstm = [
     concatenationLayer(1,2, Name = 'concat')
     lstmLayer(128, "OutputMode","last")
     dropoutLayer(0.25)
-    fullyConnectedLayer(3)
+    fullyConnectedLayer(num_classes)
     softmaxLayer()
     classificationLayer()];
 

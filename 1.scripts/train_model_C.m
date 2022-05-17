@@ -19,24 +19,24 @@ clc; clear all; close all;
 script_setup()
 
 %% select folders to aggregate data from
-recorders = {'tomer', 'omri', 'nitay'}; % people we got their recordings
-folders_num = {[1:12], [], []}; % recordings numbers - make sure that they exist
+recorders = {'tomer', 'omri', 'nitay','02','03','04','05','06','07','08','09','10','12'}; % people we got their recordings
+folders_num = {[], [], [], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5]}; % recordings numbers - make sure that they exist
 data_paths = create_paths(recorders, folders_num);
 % apperantly we have bad recordings from tomer
 % currently bad recordings from tomer: [1,2] 
 
 %% define the wanted pipeline and data split options
 options.test_split_ratio = 0.05;          % percent of the data which will go to the test set
-options.val_split_ratio  = 0.05;          % percent of the data which will go to the test set - if set to 0 val set isn't created
+options.val_split_ratio  = 0.05;          % percent of the data which will go to the validation set
 options.cross_rec        = false;        % true - test and train share recordings, false - tests are a different recordings then train
 options.feat_or_data     = 'data';       % return "train" as data or features
-options.model_algo       = 'EEGNet';     % ML model to train, choose from {'EEG_stft','EEGNet','EEGNet_stft','EEGNet_lstm','EEGNet_bilstm','EEGNet_gru','EEGNet_lstm_stft','EEGNet_bilstm_stft','EEGNet_gru_stft','SVM', 'ADABOOST', 'LDA'}
+options.model_algo       = 'EEGNet';   % ML model to train, choose from {'EEG_stft','EEGNet','EEGNet_stft','EEGNet_lstm','EEGNet_bilstm','EEGNet_gru','EEGNet_lstm_stft','EEGNet_bilstm_stft','EEGNet_gru_stft','SVM', 'ADABOOST', 'LDA'}
 options.feat_alg         = 'wavelet';    % feature extraction algorithm, choose from {'basic', 'wavelet'}
 options.cont_or_disc     = 'discrete';   % segmentation type choose from {'discrete', 'continuous'}
-options.seg_dur          = 5;            % segments duration in seconds
+options.seg_dur          = 4;            % segments duration in seconds
 options.overlap          = 4;            % following segments overlapping duration in seconds
 options.threshold        = 0.7;          % threshold for labeling in continuous segmentation - percentage of the window containing the class (0-1)
-options.sequence_len     = 4;            % length of a sequence to enter in sequence DL models
+options.sequence_len     = 1;            % length of a sequence to enter in sequence DL models
 options.resample         = [0,0,0];      % resample size for each class [class1, class2, class3]
 options.constants        = constants();  % a class member with constants that are used in the pipeline 
 

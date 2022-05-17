@@ -1,4 +1,4 @@
-function [segments, labels, sup_vec, seg_time_sampled] = segment_continouos(EEGstruct, segment_duration, overlap_duration, class_thres, constants)
+function [segments, labels, sup_vec, seg_time_sampled] = segment_continouos(data, events, segment_duration, overlap_duration, class_thres, constants)
 % this function creates a continouos segmentation of the raw data
 %
 % Input:
@@ -21,9 +21,7 @@ start_buff = constants.BUFFER_START;
 end_buff = constants.BUFFER_END;
 
 % extract the times events and data from EEGstruc
-times = EEGstruct.times;
-events = squeeze(struct2cell(EEGstruct.event)).';
-data = EEGstruct.data;
+events = squeeze(struct2cell(events)).';
 marker_times = cell2mat(events(:,2));
 marker_sign = cell2mat(events(:,1));
 
@@ -54,8 +52,8 @@ segments = zeros(num_channels, segment_size, num_segments);
 labels = zeros(num_segments, 1);
 
 % create a support vector containing the movement class in each timestamp
-sup_vec = zeros(1,length(times));
-for j = 1:length(times)
+sup_vec = zeros(1,size(data,2));
+for j = 1:size(data,2)
     last_markers = find(marker_times <= j);
     if isempty(last_markers)
         sup_vec(j) = 1;
@@ -69,7 +67,7 @@ for j = 1:length(times)
 end
 
 % segment the data and create a new labels vector
-times = (0:(length(times) - 1))./Fs;
+times = (0:(size(data,2) - 1))./Fs;
 seg_time_sampled = zeros(1,num_segments);
 start_idx = 1;
 for i = 1:num_segments
