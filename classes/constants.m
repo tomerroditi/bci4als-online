@@ -52,32 +52,33 @@ classdef constants < handle
         liblsls_path   
     end
 
+    
     methods 
         % verify and set important paths for the scripts when constructing a class object
         function obj = constants()
             % find paths of files
             if exist('eeglab.m', 'file')
                 obj.eeglab_path = which('eeglab.m');
-                obj.eeglab_path = obj.eeglab_path(1:end - 9);
+                [obj.eeglab_path,~,~] = fileparts(obj.eeglab_path);
             else
                 obj.eeglab_path = input('pls insert your full eeglab folder path, for example - C:\\Users\\eeglab2021.1: ');
             end
             if exist('LabRecorder.exe', 'file')
                 obj.lab_recorder_path = which('LabRecorder.exe');
-                obj.lab_recorder_path = obj.lab_recorder_path(1:end - 16);
+                [obj.lab_recorder_path,~,~] = fileparts(obj.lab_recorder_path);
             else
                 obj.lab_recorder_path = input('pls insert your full lab recorder folder path, for example - C:\\Users\\LabRecorder: ');
             end
             if exist('lsl_loadlib.m', 'file')
                 obj.liblsls_path = which('lsl_loadlib.m');
-                obj.liblsls_path = obj.liblsls_path(1:end - 14);
+                [obj.liblsls_path,~,~] = fileparts(obj.liblsls_path);
             else
                 obj.liblsls_path = input('pls insert your full liblsl folder path, for example - C:\\Users\\liblsl-Matlab: ');
             end
 
             obj.channel_loc_path = which('channel_loc.ced'); % chanel location file path
-            obj.root_path = which('constants.m');            % root path of the project
-            obj.root_path = obj.root_path(1:end - 20);
+            [parent_file_path,~,~] = fileparts(which(mfilename)); % gets the parent folder of the current file name
+            [obj.root_path,~,~] = fileparts(parent_file_path); % assumes that the main folder is the 'grandfather' fodler of the current file
         end
     end
 end
