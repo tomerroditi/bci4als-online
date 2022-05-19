@@ -1,8 +1,8 @@
 function [] = plot_weights(model, used_electrodes) 
     % extracts the weights of the filters in the 2nd (conv2dlayer)
-    temporalFilterWeights = model.model.Layers(2,1).Weights;
+    temporalFilterWeights = model.Layers(2,1).Weights;
     % extracts the weights of the filters in the 4th (groupedconv2dlayer)
-    spatialFilterWeights = model.model.Layers(4,1).Weights;
+    spatialFilterWeights = model.Layers(4,1).Weights;
     % get the amount of spatial and temporal filters
     szSpatial = size(spatialFilterWeights); 
     szTemporal = size(temporalFilterWeights);
@@ -13,23 +13,25 @@ function [] = plot_weights(model, used_electrodes)
     for indTempFilter = 1:nTemporalFilters
         subplot(3,nTemporalFilters,indTempFilter)
         weigtsTemporal = temporalFilterWeights(:,:,1,indTempFilter);
+        L = size(weigtsTemporal,2);
         % calculate X axis ticks
-        transformedWs = fft(weigtsTemporal);
+        transformedWs = abs(fft(weigtsTemporal));
         % we have X data points, so we are limited in our ability to
         % present frequency domain information
-        fs = szTemporal(2);
+        fs = 125;                                                           %######### fixed that to be our sample rate ###########
         % run transform fourier to get the weight per freq
-        freqs = (0:length(transformedWs)-1)*fs/length(transformedWs);
-        % Nyquist freq limitation
-        transformedWs = transformedWs(1:length(transformedWs) /2);
-        freqs = freqs (1:length(freqs) /2);
+        freqs = (0:L/2).*fs./L;
+        % remove redundand mirror image of freqs
+        transformedWs = transformedWs(1:L/2 + 1);
+        transformedWs(2:end-1) = 2.*transformedWs(2:end - 1);
         % plot the weights per frequency
         plot(freqs,transformedWs)
-        % this limit is pretty 
-        ylim([-1.5 2])
-        xticks([freqs(1) freqs(length(freqs)/2) freqs(end)]);
+        % this limit is pretty arbitrary, yet we want to keep all plots up
+        % to the same scale
+        ylim([0 2.5])
+        xticks([freqs(1) freqs(round(length(freqs)/2)) freqs(end)]);
         xlabel('Frequency (Hz)')
-        ylabel('Weight')
+        ylabel('Amp')
         title(strcat('Temporal Filter=', num2str(indTempFilter)));
         % inner loop - for each temporal filter, go over the spatial
         % filters
