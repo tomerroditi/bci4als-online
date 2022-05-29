@@ -1,4 +1,4 @@
-function [segments, labels, sup_vec, seg_time_sampled] = segment_discrete(data, events, seg_dur, constants)
+function [segments, labels, sup_vec, seg_time_sampled] = segment_discrete(data, events, post_start, pre_start, constants)
 
 % extract the times events and data from EEGstruc
 events = squeeze(struct2cell(events)).';
@@ -6,10 +6,11 @@ marker_times = cell2mat(events(:,2));
 marker_sign = events(:,1);
 
 % define segmentation parameters
-buff_start = constants.BUFFER_START; % buffer befor the segment
-buff_end = constants.BUFFER_END;     % buffer after the segment
-Fs = constants.SAMPLE_RATE;          % sample rate
-segment_size = floor(seg_dur*Fs); % segments size
+buff_start = constants.BUFFER_START;  % buffer befor the segment
+buff_end = constants.BUFFER_END;      % buffer after the segment
+Fs = constants.SAMPLE_RATE;           % sample rate
+seg_post_start = floor(post_start*Fs);% number of time points afetr start marker
+seg_pre_start = floor(pre_start*Fs);       % number of time points before start marker
 
 % create a support vector containing the movement class in each timestamp
 % and an array of the time every segment ends
@@ -41,16 +42,16 @@ labels = str2double(marker_sign(strcmp(marker_sign, '3.000000000000000') | ...
 start_times_indices = marker_times(strcmp(marker_sign, '1111.000000000000'));
 segments = [];
 for i = 1:length(start_times_indices)
-    if start_times_indices(i) - buff_start < 1
+    if start_times_indices(i) - seg_pre_start - buff_start < 1
         labels(1) = [];
         seg_time_sampled(1) = [];
         continue
-    elseif start_times_indices(i) + segment_size + buff_end > size(data, 2)
+    elseif start_times_indices(i) + seg_post_start + buff_end > size(data, 2)
         labels(end) = [];
         seg_time_sampled(end) = [];
         continue
     end
-        segments(:,:,end + 1) = data(:,start_times_indices(i) - buff_start : start_times_indices(i) + segment_size + buff_end - 2);
+        segments(:,:,end + 1) = data(:,start_times_indices(i) - seg_pre_start - buff_start : start_times_indices(i) + seg_post_start + buff_end - 2);
 end
 segments(:,:,1) = []; % clear zeros
 end

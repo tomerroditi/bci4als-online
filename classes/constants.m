@@ -25,7 +25,7 @@ classdef constants < handle
         NOTCH_WIDTH     = 0.5;     % the width of the notch filter
     
         % preprocessing settings and options
-        PREPROCESS_BAD_ELECTRODES  = []; % electrodes to remove
+        PREPROCESS_BAD_ELECTRODES  = [12,13,14,15,16]; % electrodes to remove
         PREPROCESS_NOISE_REJECTION = 0;       % automaticNoiseRejection
         PREPROCESS_AVG_REREF       = 0;       % automaticAverageReReference
         PREPROCESS_LAPLACIAN       = 0;       % 1 - use laplacian filtering, 0 - don't use

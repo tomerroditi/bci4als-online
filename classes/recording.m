@@ -21,23 +21,13 @@ classdef recording < handle & matlab.mixin.Copyable
     methods
         % define the object
         function obj = recording(file_path, options)
-
-            if nargin > 0
+            if nargin > 0 % support empty objects
                 obj.path = file_path;
-                obj.options = options;
                 obj.constants = options.constants;
-                % extract values from the options structure for better code readability
-                cont_or_disc  = options.cont_or_disc;
-                seg_dur = options.seg_dur;
-                overlap = options.overlap;
-                threshold = options.threshold;
-                feat_or_data = options.feat_or_data;
-                feat_alg = options.feat_alg;
-                sequence_len = options.sequence_len;
-                if strcmp(cont_or_disc, 'discrete') % sequence must be 1 for discrete segmentation
-                    sequence_len = 1;
-                    obj.options.sequence_len = 1;
+                if strcmp(options.cont_or_disc, 'discrete') % sequence length must be 1 for discrete segmentation
+                    options.sequence_len = 1;
                 end
+                obj.options = options;
                 % set a name for the obj according to its file path
                 strs = split(file_path, '\');
                 obj.Name = [strs{end - 1}(5:end) ' - ' strs{end}];
@@ -56,13 +46,13 @@ classdef recording < handle & matlab.mixin.Copyable
                 else
                     error('Error. only {"xdf","edf"} file types are supported for loading data')
                 end
-                [segments, labels, obj.supp_vec, sample_time] = ...
-                    MI2_SegmentData(obj.raw_data, obj.markers, labels, cont_or_disc, seg_dur, overlap, threshold, obj.constants); % create segments
-                segments = MI3_Preprocess(segments, cont_or_disc, obj.constants); % filter the segments
-                if strcmp(feat_or_data, 'feat')
+                [segments, obj.labels, obj.supp_vec, obj.sample_time] = ...
+                    MI2_SegmentData(obj.raw_data, obj.markers, labels, options); % create segments
+                obj.segments = MI3_Preprocess(segments, options.cont_or_disc, obj.constants); % filter the segments
+                if strcmp(options.feat_or_data, 'feat')
                     obj.features = get_features(segments, feat_alg); % create features if needed
                 end 
-                [obj.segments, obj.labels, obj.sample_time] = create_sequence(segments, labels, sequence_len, sample_time);
+                [obj.segments] = create_sequence(segments, options);
             end
         end
             
@@ -111,10 +101,10 @@ classdef recording < handle & matlab.mixin.Copyable
                 options.criterion_thresh = [];
                 options.print = false;
             end
-            if isempty(obj.data_store)
+            if isempty(obj.data_store) % create a data store if its empty
                 obj.create_ds;
             end
-            if ~isempty(obj.data_store)
+            if ~isempty(obj.data_store) % check if the obj is not empty
                 [pred, thresh, CM] = evaluation(model, obj.data_store, CM_title = options.CM_title, ...
                     criterion = options.criterion, criterion_thresh = options.criterion_thresh, ...
                     thres_C1 = options.thres_C1, print = options.print);

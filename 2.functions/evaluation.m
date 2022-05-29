@@ -39,10 +39,13 @@ end
 data_set = readall(data_store);
 class_true = cellfun(@double ,data_set(:,2), 'UniformOutput', true);
 
-if ~isempty(options.criterion) && ~isempty(options.criterion_thresh) % predict with criterion
-    % predict using the model
-    scores = predict(model, data_store);
+% predict using the model
+scores = predict(model, data_store);
+if size(scores,2) < 3 % if we only have 2 classes then add another column of zeros
+    scores = cat(2, scores, zeros(size(scores,1)));
+end
 
+if ~isempty(options.criterion) && ~isempty(options.criterion_thresh) % predict with criterion
     % get the criterion you desire 
     [crit_values,~,thresholds] = perfcurve(class_true, scores(:,1), 1, 'XCrit', options.criterion);
 
@@ -58,9 +61,6 @@ if ~isempty(options.criterion) && ~isempty(options.criterion_thresh) % predict w
 
     title = [' confusion matrix - ' options.criterion ' = '  num2str(options.criterion_thresh)];
 elseif ~isempty(options.thres_C1) % predict with threshold for class 1
-    % predict using the model
-    scores = predict(model, data_store);
-
     % label the samples according to the threshold
     class_pred = zeros(size(class_true)); % set an empty labels vector
     class_pred(scores(:,2) >= scores(:,3)) = 2;
@@ -70,7 +70,6 @@ elseif ~isempty(options.thres_C1) % predict with threshold for class 1
     title = [' confusion matrix - class 1 threshold = '  num2str(options.thres_C1)];
     thresh = [];
 else % deafult prediction
-    scores = predict(model, data_store);
     [~, class_pred] = max(scores, [],2);
     title = ' confusion matrix';
     thresh = [];
@@ -81,7 +80,7 @@ accuracy = sum(class_true == class_pred)/length(class_true);
 % plot the confusion matrix
 if options.print
     figure('Name', [options.CM_title title]);
-    confusionchart(CM,["Idle";"Left"; "Right"]);
+    confusionchart(CM);
     disp([options.CM_title ' accuracy is: ' num2str(accuracy)]);
 end
 

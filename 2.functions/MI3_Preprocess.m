@@ -7,6 +7,8 @@ function filt_data = MI3_Preprocess(segments, cont_or_disc, constants)
 %   dimentions are [trials, channels, time (data samples)].
 %   - cont_or_disc - a string specifying if the segmentation type is
 %   continuous or discrete.
+%   - constants: a Constants object containing some constants for the
+%                preprocessing process.
 %
 % Output:
 %   - postprocces_segments - a 3D matrix of the segments after being

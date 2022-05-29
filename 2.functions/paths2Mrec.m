@@ -23,7 +23,7 @@ end
     recordings = cell(1,length(paths));
     for i = 1:length(paths)
         waitbar(i/length(paths), f, ['preprocessing data, recording ' num2str(i) ' out of ' num2str(length(paths))]); % update the wait bar
-        recordings{i} = recording(paths{i}, options); % crete a class member for each path
+        recordings{i} = recording(paths{i}, options); % create a class member for each path
     end
     multi_rec = multi_recording(recordings); % create a class member from all paths
     delete(f); %close the wait bar
