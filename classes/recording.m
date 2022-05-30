@@ -4,6 +4,8 @@ classdef recording < handle & matlab.mixin.Copyable
         options
         Name 
         raw_data
+        normed_raw_data
+        normed_segments
         markers
         segments
         features
@@ -19,7 +21,7 @@ classdef recording < handle & matlab.mixin.Copyable
     end
 
     methods
-        % define the object
+        %% define the object
         function obj = recording(file_path, options)
             if nargin > 0 % support empty objects
                 obj.path = file_path;
@@ -38,25 +40,45 @@ classdef recording < handle & matlab.mixin.Copyable
                     [~, EEG] = evalc("pop_loadxdf([file_path '\EEG.xdf'], 'streamtype', 'EEG')");
                     obj.raw_data = EEG.data;
                     obj.markers = EEG.event;
+                    obj.raw_data(obj.constants.xdf_removed_chan,:) = []; % remove unused channels
                     labels = load(strcat(file_path, '\labels.mat'), 'labels'); % load the labels vector
                     labels = labels.labels;
                 elseif ~isempty(dir([file_path '\*.edf'])) 
                     obj.file_type = 'edf';
                     [obj.raw_data, obj.markers, labels] = edf2data(file_path);
+                    obj.raw_data(obj.constants.edf_removed_chan,:) = []; % remove unused channels
                 else
                     error('Error. only {"xdf","edf"} file types are supported for loading data')
                 end
                 [segments, obj.labels, obj.supp_vec, obj.sample_time] = ...
                     MI2_SegmentData(obj.raw_data, obj.markers, labels, options); % create segments
-                obj.segments = MI3_Preprocess(segments, options.cont_or_disc, obj.constants); % filter the segments
+                segments = MI3_Preprocess(segments, options.cont_or_disc, obj.constants); % filter the segments
                 if strcmp(options.feat_or_data, 'feat')
                     obj.features = get_features(segments, feat_alg); % create features if needed
                 end 
                 [obj.segments] = create_sequence(segments, options);
             end
         end
-            
-        % create a new obj with resampled segments (data)
+
+        %% normalization of segments
+        function normalize_seg(obj)
+            if ~isempty(obj.segments)
+                obj.normed_segments = norm_eeg(obj.segments);
+            end
+        end
+
+        %% normalize raw data
+        function normalize_raw(obj)
+            obj.normed_raw_data = [];
+            for i = 1:size(obj.raw_data,1)
+                curr_channel = obj.raw_data(i,:);
+                Q = quantile(curr_channel, [0.25 0.75], "all");
+                curr_channel =  (curr_channel - Q(1))./(Q(2) - Q(1));
+                obj.normed_raw_data = cat(1, obj.normed_raw_data, curr_channel);
+            end
+        end
+                     
+        %% create a new obj with resampled segments (data)
         function new_obj = rsmpl_data(obj, args)
             arguments
                 obj
@@ -68,21 +90,17 @@ classdef recording < handle & matlab.mixin.Copyable
             end
         end
             
-        % create a data store from the obj segments and labels
+        %% create a data store from the obj segments (normalized!) and labels
         function create_ds(obj) 
-            if ~isempty(obj.segments) && ~isempty(obj.labels)
-                obj.data_store = set2ds(obj.segments, obj.labels, obj.constants);
+            if isempty(obj.normed_segments)
+                obj.normalize_seg()
+            end
+            if ~isempty(obj.normed_segments) && ~isempty(obj.labels)
+                obj.data_store = set2ds(obj.normed_segments, obj.labels, obj.constants);
             end
         end
-
-        % normalization of data store
-        function normalize_ds(obj)
-            if ~isempty(obj.data_store)
-                obj.data_store = transform(obj.data_store, @norm_eeg);
-            end
-        end
-        
-        % data augmentation
+   
+        %% data augmentation
         function new_obj = augment(obj)
             new_obj = copy(obj);
             if ~isempty(obj.data_store)
@@ -90,7 +108,7 @@ classdef recording < handle & matlab.mixin.Copyable
             end
         end
 
-        % classification and evaluation
+        %% classification and evaluation
         function [pred, thresh, CM] = evaluate(obj, model, options)
             arguments
                 obj
@@ -114,7 +132,7 @@ classdef recording < handle & matlab.mixin.Copyable
             end
         end
         
-        % visualization of predictions
+        %% visualization of predictions
         function visualize(obj, options)
             arguments
                 obj
@@ -125,7 +143,7 @@ classdef recording < handle & matlab.mixin.Copyable
             end
         end
 
-        % model activations operations
+        %% model activations operations
         function fc_activation(obj, model)
             % find the FC layer index
             fc = 0;
@@ -148,7 +166,7 @@ classdef recording < handle & matlab.mixin.Copyable
             end
         end
 
-        % model output
+        %% model output
         function model_output(obj, model)
             if isa(model, 'dlnetwork') % need to work with dlarrays in that case
                 data_set = readall(obj.data_store);
@@ -161,7 +179,7 @@ classdef recording < handle & matlab.mixin.Copyable
             end
         end
 
-        % visualize fc activations of a model
+        %% visualize fc activations of a model
         function visualize_act(obj, dim_red_algo, num_dim)
             if isempty(obj.fc_act)
                 disp(['You need to calculate the "fc" layer activations in order to visualize them' newline ...
@@ -190,7 +208,7 @@ classdef recording < handle & matlab.mixin.Copyable
             end
         end
 
-        % visualize output of a model
+        %% visualize output of a model
         function visualize_output(obj, dim_red_algo, num_dim)
             if isempty(obj.mdl_output)
                 disp(['You need to calculate the outputs of the model in order to visualize them' newline ...

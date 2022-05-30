@@ -1,5 +1,4 @@
 classdef constants < handle
-%    ##### need to verify the locations are updated to the new headset in the channel_loc file #####
     properties (Constant)
         % general settings - DO NOT CHANGE THEM UNLESS YOU WORK ON A DIFFERENT  PROBLEM!
         N_CLASSES                  = 3;
@@ -17,15 +16,16 @@ classdef constants < handle
         TRIAL_LENGTH               = 5;  % duration of each class mark
     
         % filters constants
-        HIGH_FREQ       = 30;      % BP high cutoff frequency in HZ
+        HIGH_FREQ       = 38;      % BP high cutoff frequency in HZ
         HIGH_WIDTH      = 3;       % the width of the transition band for the high freq cutoff
-        LOW_FREQ        = 7;       % BP low cutoff frequency in HZ
+        LOW_FREQ        = 4;       % BP low cutoff frequency in HZ
         LOW_WIDTH       = 3;       % the width of the transition band for the low freq cutoff
         NOTCH           = 50;      % frequency to implement notch filter
         NOTCH_WIDTH     = 0.5;     % the width of the notch filter
     
         % preprocessing settings and options
-        PREPROCESS_BAD_ELECTRODES  = [12,13,14,15,16]; % electrodes to remove
+        xdf_removed_chan = [12,13,14,15,16];  % electrodes to remove
+        edf_removed_chan = []
         PREPROCESS_NOISE_REJECTION = 0;       % automaticNoiseRejection
         PREPROCESS_AVG_REREF       = 0;       % automaticAverageReReference
         PREPROCESS_LAPLACIAN       = 0;       % 1 - use laplacian filtering, 0 - don't use

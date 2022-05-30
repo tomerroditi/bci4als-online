@@ -15,7 +15,7 @@
 % parameters 'ValidationFrequency', 'ValidationPatience',
 % 'LearnRateDropPeriod' should consider the data_store size instead of
 % being a constant size.
-% - 
+% - need to figure out how to use the parfor 
 
 clc; clear all; close all;
 % a quick paths check and setup (if required) for the script
@@ -73,7 +73,7 @@ end
 
 %% train models with different options
 models = cell(5,length(options));
-for k = 1:length(options_set)
+parfor k = 1:length(options_set) %####### need to figure out how to use the parfor #######
     options = options_set{k};
     
     % preprocess the data into train, test and validation sets
@@ -82,7 +82,7 @@ for k = 1:length(options_set)
         recordings{i} = recording(data_paths{i}, options); % crete a class member for each path
     end
     all_rec = multi_recording(recordings); % create a class member from all paths
-    [train, test, val] = all_rec.train_test_split(); % create class member for each set
+    [train, test, val] = all_rec.train_test_split(); % create class member for each set - we might want to create a constant devision, hence this needs to be changed!
     
     % check data distribution in each data set
     train_distr = tabulate(train.labels);
@@ -91,19 +91,13 @@ for k = 1:length(options_set)
 
     % resample train set - this is how we reballance our training distribution
     train_rsmpl = train.rsmpl_data("resample",[0 round(ratio_1_2 - 1) round(ratio_1_3 - 1)]);
-    
-    
-    % create a datastore for the data - this is usefull if we want to augment our data while training the NN
+
+    % create a datastore from the normed data - this is usefull if we want to augment our data while training the NN
+    % notice that this function uses the normalized segments
     train.create_ds();
     train_rsmpl.create_ds();
     val.create_ds();
     test.create_ds();
-    
-    % normalize all data sets
-    train.normalize_ds();
-    train_rsmpl.normalize_ds();
-    val.normalize_ds();
-    test.normalize_ds();
     
     % add augmentation functions to the train datastore (X flip & random
     % gaussian noise) - helps preventing overfitting
@@ -124,18 +118,3 @@ for k = 1:length(options_set)
     mdl_struct.train_name = train.Name;
     save([path '\mdl_struct'], 'mdl_struct')
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

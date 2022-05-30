@@ -52,7 +52,7 @@ step_size = segment_size - overlap_size; % step size between 2 segments
 
 % initialize empty segments matrix and labels vector
 num_segments = floor((size(data,2) - segment_size)/step_size) + 1;
-num_channels = EEGstruct.nbchan;
+num_channels = size(data,1);
 segments = zeros(num_channels, segment_size, num_segments);
 labels = zeros(num_segments, 1);
 

@@ -46,7 +46,7 @@ layers_stft = [
     PermuteStftLayer(Name = 'Permute')
     stftLayer('Window', rectwin(128), 'OverlapLength', 100,"OutputMode", "spatial")
     dropoutLayer(0.25)
-    groupedConvolution2dLayer([65 1], 4, 'channel-wise') % window_size/2 + 1 = N_DFT_points
+    groupedConvolution2dLayer([65 1], 2, 'channel-wise') % window_size/2 + 1 = N_DFT_points
     batchNormalizationLayer()
     eluLayer(1)
     convolution2dLayer([1 4], 8, 'Padding','same','Stride', [1 2])

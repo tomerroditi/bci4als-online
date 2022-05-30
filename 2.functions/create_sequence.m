@@ -30,7 +30,7 @@ seq_data = cell(num_of_seg, 1); % initialize an empty cell to contain the sequen
 for i = 1:num_of_seg
     temp_data = data(:, 1:seg_dur*Fs ,:,i);
     for j = 1:sequence_len - 1
-        temp_data = cat(4,temp_data, data(:, j*seq_step_size:seg_dur*Fs + j*seq_step_size ,:,i));
+        temp_data = cat(4,temp_data, data(:, 1 + j*seq_step_size:seg_dur*Fs + j*seq_step_size ,:,i));
     end
     seq_data{i} = temp_data;
 end

@@ -10,7 +10,7 @@ classdef multi_recording < handle & matlab.mixin.Copyable & recording
     end
 
     methods
-        % define the object
+        %% define the object
         function obj = multi_recording(recordings)
             if nargin > 0  % support an empty class members
                 if isempty(recordings)
@@ -46,7 +46,7 @@ classdef multi_recording < handle & matlab.mixin.Copyable & recording
             end
         end
 
-        % create a data set from the obj segments and labels
+        %% create a data set from the obj segments and labels
         function create_ds(obj) 
             create_ds@recording(obj)
             for i = 1:length(obj.recordings)
@@ -54,15 +54,24 @@ classdef multi_recording < handle & matlab.mixin.Copyable & recording
             end
         end
 
-        % normalization of data store
+        %% normalization of segments
         function normalize_ds(obj)
-            normalize_ds@recording(obj)
+            normalize_ds@recording(obj) % normalize the obj segments
             for i = 1:length(obj.recordings)
-                obj.recordings{i}.normalize_ds
+                obj.recordings{i}.normalize_seg() % normalize all recordings objects segments
             end
         end
 
-        % predictions and evaluation
+        %% normalization of raw data
+        function normalize_raw(obj)
+            obj.normed_raw_data = [];
+            for i = 1:obj.num_rec
+                obj.recordings{i}.normalize_raw();
+                obj.normed_raw_data = cat(2,obj.normed_raw_data, obj.recordings{i}.normed_raw_data);
+            end
+        end
+
+        %% predictions and evaluation
         function [pred, thresh, CM] = evaluate(obj, model, options)
             arguments
                 obj
@@ -93,8 +102,7 @@ classdef multi_recording < handle & matlab.mixin.Copyable & recording
             end
         end
 
-        % train test validation split ### need to add an option for cross
-        % recordings split ###
+        %% train test validation split ### need to add an option for cross recordings split ###
         function [train, test, val] = train_test_split(obj, args)
             arguments
                 obj

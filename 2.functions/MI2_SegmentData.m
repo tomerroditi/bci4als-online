@@ -18,9 +18,9 @@ function [segments, labels, sup_vec, seg_time_sampled] = MI2_SegmentData(EEG_dat
 %   dimentions are [trial, channels, time (sampled data)]
 %   - labels: a label vector coresponding to the trials in segments
 %   - sup_vec: a vector containing the class labels of each time point
-%   - EEG_chans: a string array containing the names of channels
 %
 
+% extract variables from options structure
 cont_or_disc = options.cont_or_disc;
 post_start = options.post_start;
 pre_start = options.pre_start;
@@ -30,9 +30,6 @@ sequence_len = options.sequence_len;
 seg_dur = options.seg_dur;
 sequence_overlap = options.sequence_overlap;
 constants = options.constants;
-
-% remove unwanted channels
-EEG_data(constants.PREPROCESS_BAD_ELECTRODES,:) = [];
 
 % check for inconsistencies in the events data and the labels vector
 num_labels = length(labels);   % derive number of trials from training label vector

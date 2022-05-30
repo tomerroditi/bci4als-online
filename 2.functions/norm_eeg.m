@@ -1,4 +1,4 @@
-function norm_data =  norm_eeg(datastore)
+function norm_seg = norm_eeg(segments)
 % this function normalize the data inside a datastore, use it inside the
 % 'transform' function!
 %
@@ -12,18 +12,18 @@ function norm_data =  norm_eeg(datastore)
 %
 %
 
-
-% seperate data and labels
-data = datastore(:,1);
-labels = datastore(:,2);
-
-% extract quantiles for each segment
-Q = cellfun(@(X) quantile(X, [0.25 0.75], "all"), data, 'UniformOutput', false);
-
 % normalize the data - DO NOT use normalization to [0 1] range!
-for i = 1:length(data)
-    data{i} = (data{i} - Q{i}(1))./(Q{i}(2) - Q{i}(1));
+for j = 1:size(segments{1}, 1)
+    % extract quantiles for each channel in the segment
+    Q = cellfun(@(X) quantile(X(j,:), [0.1 0.9], "all"), segments, 'UniformOutput', false); 
+    % create a cell for each normed channel
+    norm_seg{j} = cellfun(@(X,Y) (X(j,:) - Y(1))./(Y(2) - Y(1)), segments, Q, 'UniformOutput', false);
 end
 
-norm_data = [data labels];
+% concatenate the normed channels
+for j = 2:size(segments{1}, 1)
+    norm_seg{1} = cellfun(@(X,Y) cat(1,X,Y), norm_seg{1}, norm_seg{j}, 'UniformOutput', false);
+end
+
+norm_seg = norm_seg{1};
 end

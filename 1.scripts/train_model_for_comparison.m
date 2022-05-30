@@ -21,15 +21,13 @@ script_setup()
 %% select folders to aggregate data from
 recorders = {'tomer', 'omri', 'nitay'}; % people we got their recordings
 
-train_folders_num = {[1:4, 6:14, 16:17], [1,3,5], []}; % recordings numbers for train data - make sure that they exist
-val_folders_num =  {[5], [2], []}; % recordings numbers for validation data- make sure that they exist
-test_folders_num = {[15], [4], []}; % recordings numbers for test data - make sure that they exist
+train_folders_num = {[1:10,12,13,15,16,17], [], []}; % recordings numbers for train data - make sure that they exist
+val_folders_num =  {[11], [], []}; % recordings numbers for validation data- make sure that they exist
+test_folders_num = {[14], [], []}; % recordings numbers for test data - make sure that they exist
 
 train_data_paths = create_paths(recorders, train_folders_num);
 val_data_paths = create_paths(recorders, val_folders_num);
 test_data_paths = create_paths(recorders, test_folders_num);
-% apperantly we have bad recordings from tomer
-% currently bad recordings from tomer: [1,2] 
 
 
 %% define the wanted pipeline and data split options
@@ -37,7 +35,7 @@ options.test_split_ratio = 0.05;         % percent of the data which will go to 
 options.val_split_ratio  = 0.05;         % percent of the data which will go to the validation set
 options.cross_rec        = false;        % true - test and train share recordings, false - tests are a different recordings then train
 options.feat_or_data     = 'data';       % specify if you desire to extract data or features
-options.model_algo       = 'EEGNet';     % ML model to train, choose from {'EEG_stft','EEGNet','EEGNet_stft','EEGNet_lstm','EEGNet_bilstm','EEGNet_gru','EEGNet_lstm_stft','EEGNet_bilstm_stft','EEGNet_gru_stft','SVM', 'ADABOOST', 'LDA'}
+options.model_algo       = 'EEGNet_stft';     % ML model to train, choose from {'EEG_stft','EEGNet','EEGNet_stft','EEGNet_lstm','EEGNet_bilstm','EEGNet_gru','EEGNet_lstm_stft','EEGNet_bilstm_stft','EEGNet_gru_stft','SVM', 'ADABOOST', 'LDA'}
 options.feat_alg         = 'wavelet';    % feature extraction algorithm, choose from {'basic', 'wavelet'}
 options.cont_or_disc     = 'discrete';   % segmentation type choose from {'discrete', 'continuous'}
 options.resample         = [0,0,0];      % resample size for each class [class1, class2, class3]
@@ -47,8 +45,8 @@ options.pre_start        = 0.5;          % duration in seconds to include in seg
 options.post_start       = 3;            % duration in seconds to include in segments after the start marker
 % continuous only
 options.seg_dur          = 4;            % duration in seconds of each segment
-options.overlap          = 4;            % duration in seconds of following segments overlapping
-options.sequence_len     = 1;            % number of segments in a sequence (for sequential DL models)
+options.overlap          = 3.5;            % duration in seconds of following segments overlapping
+options.sequence_len     = 3;            % number of segments in a sequence (for sequential DL models)
 options.sequence_overlap = 2;            % duration in seconds of overlap between following segments in a sequence
 options.threshold        = 0.7;          % threshold for labeling - percentage of the segment containing the class (only values from 0-1 range)
 
@@ -67,16 +65,11 @@ train_rsmpl = train.rsmpl_data();
 
 
 %% create a datastore for the data - this is usefull if we want to augment our data while training the NN
+% notice that this function uses the normalized segments
 train.create_ds();
 train_rsmpl.create_ds();
 val.create_ds();
 test.create_ds();
-
-% normalize all data sets
-train.normalize_ds();
-train_rsmpl.normalize_ds();
-val.normalize_ds();
-test.normalize_ds();
 
 % add augmentation functions to the train datastore (X flip & random
 % gaussian noise) - helps preventing overfitting
@@ -103,6 +96,3 @@ mdl_struct.test_names = test.Name;
 mdl_struct.val_name = val.Name;
 mdl_struct.train_name = train.Name;
 uisave('mdl_struct', 'mdl_struct');
-
-%% visualize the network weights - try to explaine the network computations
-% temporal_conv_weights = model.Layers(3).Weights;

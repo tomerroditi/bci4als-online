@@ -5,13 +5,16 @@
 % - create the script for preprocessing hyperparameters optimization
 
 % small tasks:
-% - validate the WGN we add as an augmentation
-% - add an option to choose certain time point to start from in the
-% segments options (e.g 1 second before the cue)
-% - add an option to differ between time delay for each new segment and
-% time delay between sequenced segments.
+% - validate the WGN we add as an augmentatio
 % - add a function to validate the options structure which alert if
 % unsupported values are givven and asigns default values for missing
 % fields. insert this function in 'recording' constructor!
+% - add statistical analysis and visualize it
+% -figure out what to do with the statistical analysis, maybe use it to
+% recognize noisy recordings. 
+% - figure out what to do with high amplitude points in a recording, maybe
+% clip them to some threshold
+% - add visualization of filtered raw data in the stat analysis function
+% - add an option to controll the augmentations from Constants object
 
 

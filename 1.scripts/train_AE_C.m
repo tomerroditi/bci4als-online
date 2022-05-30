@@ -60,17 +60,12 @@ disp('testing data distribution'); tabulate(test.labels)
 % resample train set
 train_rsmpl = train.rsmpl_data();
 
-%% create a datastore for the data - this is usefull if we want to augment our data while training the NN
+%% create a datastore from the data - this is usefull if we want to augment our data while training the NN
+% notice that this function uses the normalized segments
 train.create_ds();
 train_rsmpl.create_ds();
 val.create_ds();
 test.create_ds();
-
-% normalize all data sets
-train.normalize_ds();
-train_rsmpl.normalize_ds();
-val.normalize_ds();
-test.normalize_ds();
 
 % add augmentation functions to the train datastore (X flip & random
 % gaussian noise) - helps preventing overfitting
