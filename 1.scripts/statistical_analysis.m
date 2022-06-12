@@ -1,4 +1,5 @@
-% this script is for statistical analysis of the raw data
+% this script is for statistical analysis of the raw data - this helped me
+% to make a good and correct normalizations across all recordings
 
 
 clc; clear all; close all; %#ok<CLALL> 
@@ -28,16 +29,70 @@ options.threshold        = 0.7;          % threshold for labeling - percentage o
 %% select folders to aggregate data from
 recorders = {'tomer', 'omri', 'nitay','02','03','04','05','06','07','08','09','10','12'}; % people we got their recordings
 % folders_num = {[], [], [], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5]}; % recordings numbers - make sure that they exist
-folders_num = {[1:17], [1:5], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers - make sure that they exist
+folders_num = {[1:5], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers - make sure that they exist
 data_paths = create_paths(recorders, folders_num);
 
 all_rec = paths2Mrec(data_paths, options); % create a class member from all paths
-all_rec.normalize_raw();
 
 %% plots - visualization
-figure(1); plot(all_rec.raw_data(1:11,:).'); 
-legend({'channel 1','channel 2','channel 3','channel 4','channel 5',...
-    'channel 6','channel 7','channel 8','channel 9','channel 10','channel 11'})
-figure(2); plot(all_rec.normed_raw_data(1:11,:).');
-legend({'channel 1','channel 2','channel 3','channel 4','channel 5',...
-    'channel 6','channel 7','channel 8','channel 9','channel 10','channel 11'})
+for i = 1:length(all_rec.recordings)
+    indices(i) = size(all_rec.recordings{i}.raw_data,2);
+    indices_filt(i) = size(all_rec.recordings{i}.raw_data_filt,2);
+end
+indices = cumsum(indices);
+indices_filt = cumsum(indices_filt);
+legend_names = {'channel 1','channel 2','channel 3','channel 4','channel 5',...
+    'channel 6','channel 7','channel 8','channel 9','channel 10','channel 11'};
+
+% raw data
+figure(1); plot(all_rec.raw_data.'); xline(indices);
+legend(legend_names); title('raw data');
+
+% filtered raw data
+figure(2); plot(all_rec.raw_data_filt.'); xline(indices_filt);
+legend(legend_names); title('filtered raw data');
+
+fourier = []; fourier_filt = [];
+for i = 1:length(all_rec.recordings)
+    fourier = cat(2, fourier, abs(fft(all_rec.recordings{i}.raw_data - mean(all_rec.recordings{i}.raw_data,2), [], 2)));
+    fourier_filt = cat(2, fourier_filt, abs(fft(all_rec.recordings{i}.raw_data_filt - mean(all_rec.recordings{i}.raw_data_filt,2), [], 2)));
+end
+
+figure(3); plot(fourier.'); xline(indices);
+legend(legend_names); title('fft - raw data');
+
+figure(4); plot(fourier_filt.'); xline(indices_filt);
+legend(legend_names); title('fft - filtered raw data');
+
+
+
+% normalize the data
+all_rec.normalize('all');
+
+% normalized raw data
+figure(5); plot(all_rec.raw_data.'); xline(indices);
+legend(legend_names); title('normalized raw data');
+
+% normalized filtered raw data
+figure(6); plot(all_rec.raw_data_filt.'); xline(indices_filt);
+legend(legend_names); title('normalized filtered raw data');
+
+fourier = []; fourier_filt = [];
+for i = 1:length(all_rec.recordings)
+    fourier = cat(2, fourier, abs(fft(all_rec.recordings{i}.raw_data - mean(all_rec.recordings{i}.raw_data,2), [], 2)));
+    fourier_filt = cat(2, fourier_filt, abs(fft(all_rec.recordings{i}.raw_data_filt - mean(all_rec.recordings{i}.raw_data_filt,2), [], 2)));
+end
+
+% fft - normalized raw data
+figure(7); plot(fourier.'); xline(indices);
+legend(legend_names); title('fft - normalized raw data');
+
+% fft - normalized filtered raw data
+figure(8); plot(fourier_filt.'); xline(indices_filt);
+legend(legend_names); title('fft - normalized filtered raw data');
+
+
+
+
+
+

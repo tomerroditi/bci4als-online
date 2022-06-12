@@ -20,6 +20,9 @@ input_samples = read(train_ds);
 input_size = size(input_samples{1,1});
 num_classes = length(unique(cellfun(@(X)double(X), input_samples(:,2))));
 
+% input_size = [11, 300, 1, 4];
+% num_classes = 3;
+
 % define the network layers
 layers_input = [    
     sequenceInputLayer(input_size(1:3))

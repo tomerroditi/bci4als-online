@@ -19,11 +19,15 @@ clc; clear all; close all;
 script_setup()
 
 %% select folders to aggregate data from
-recorders = {'tomer', 'omri', 'nitay'}; % people we got their recordings
+recorders = {'tomer', 'omri', 'nitay','02','03','04','05','06','07','08','09','10','12'}; % people we got their recordings
 
-train_folders_num = {[1:10,12,13,15,16,17], [], []}; % recordings numbers for train data - make sure that they exist
-val_folders_num =  {[11], [], []}; % recordings numbers for validation data- make sure that they exist
-test_folders_num = {[14], [], []}; % recordings numbers for test data - make sure that they exist
+% train_folders_num = {[], [], [], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], []}; % recordings numbers for train data - make sure that they exist
+% val_folders_num =  {[], [], [], [], [], [], [], [], [], [], [], [], [2:5]}; % recordings numbers for validation data- make sure that they exist
+% test_folders_num = {[], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for test data - make sure that they exist
+
+train_folders_num = {[1:6, 9:10, 12, 13, 15:17], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for train data - make sure that they exist
+val_folders_num =  {[11], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for validation data- make sure that they exist
+test_folders_num = {[], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for test data - make sure that they exist
 
 train_data_paths = create_paths(recorders, train_folders_num);
 val_data_paths = create_paths(recorders, val_folders_num);
@@ -34,15 +38,15 @@ test_data_paths = create_paths(recorders, test_folders_num);
 options.test_split_ratio = 0.05;         % percent of the data which will go to the test set
 options.val_split_ratio  = 0.05;         % percent of the data which will go to the validation set
 options.cross_rec        = false;        % true - test and train share recordings, false - tests are a different recordings then train
-options.feat_or_data     = 'data';       % specify if you desire to extract data or features
-options.model_algo       = 'EEGNet_stft';     % ML model to train, choose from {'EEG_stft','EEGNet','EEGNet_stft','EEGNet_lstm','EEGNet_bilstm','EEGNet_gru','EEGNet_lstm_stft','EEGNet_bilstm_stft','EEGNet_gru_stft','SVM', 'ADABOOST', 'LDA'}
-options.feat_alg         = 'wavelet';    % feature extraction algorithm, choose from {'basic', 'wavelet'}
+options.feat_or_data     = 'data';       % specify if you desire to extract data or features, choose from {'data', 'feat'}
+options.model_algo       = 'EEG_stft';   % ML model to train, choose from {'alexnet','EEG_stft','EEGNet','EEGNet_stft','EEGNet_lstm','EEGNet_bilstm','EEGNet_gru','EEGNet_lstm_stft','EEGNet_bilstm_stft','EEGNet_gru_stft','SVM', 'ADABOOST', 'LDA'}
+options.feat_alg         = 'none';       % feature extraction algorithm, choose from {'basic', 'wavelet'}
 options.cont_or_disc     = 'discrete';   % segmentation type choose from {'discrete', 'continuous'}
 options.resample         = [0,0,0];      % resample size for each class [class1, class2, class3]
 options.constants        = constants();  % a class member with constants that are used in the pipeline
 % discrete only
-options.pre_start        = 0.5;          % duration in seconds to include in segments before the start marker
-options.post_start       = 3;            % duration in seconds to include in segments after the start marker
+options.pre_start        = 1;          % duration in seconds to include in segments before the start marker
+options.post_start       = 2;            % duration in seconds to include in segments after the start marker
 % continuous only
 options.seg_dur          = 4;            % duration in seconds of each segment
 options.overlap          = 3.5;            % duration in seconds of following segments overlapping
@@ -60,16 +64,28 @@ disp('training data distribution'); train_distr = tabulate(train.labels); tabula
 disp('validation data distribution'); tabulate(val.labels)
 disp('testing data distribution'); tabulate(test.labels)
 
+
+%% normalize data
+train.normalize('all');
+val.normalize('all');
+test.normalize('all');
+
 % resample train set - this is how we reballance our training distribution
+% (mainly for continuous segmentation, when we have lots of idle class)
 train_rsmpl = train.rsmpl_data();
 
+%% extract features - determined by options.feat_alg
+train.extract_feat();
+val.extract_feat();
+test.extract_feat();
+train_rsmpl.extract_feat();
 
 %% create a datastore for the data - this is usefull if we want to augment our data while training the NN
-% notice that this function uses the normalized segments
-train.create_ds();
-train_rsmpl.create_ds();
-val.create_ds();
-test.create_ds();
+% choose either to create the data store from "segments" or from "features"
+train.create_ds('segments');
+train_rsmpl.create_ds('segments');
+val.create_ds('segments');
+test.create_ds('segments');
 
 % add augmentation functions to the train datastore (X flip & random
 % gaussian noise) - helps preventing overfitting

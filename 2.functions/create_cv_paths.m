@@ -9,7 +9,7 @@ function [train_paths, test_paths] = create_cv_paths(recorders, folders_num, K)
 %   folders_num: a cell containing the recording number for each recorder,
 %                matching the names in 'recorders'
 %   K: How many folds to use? splits the recordings to train and
-%   validation&test.
+%      validation&test.
 %
 %
 % outputs:

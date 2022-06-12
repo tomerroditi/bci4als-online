@@ -20,15 +20,16 @@ script_setup()
 
 %% select folders to aggregate data from
 recorders = {'tomer', 'omri', 'nitay','02','03','04','05','06','07','08','09','10','12'}; % people we got their recordings
-folders_num = {[1:17], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers - make sure that they exist
+% folders_num = {[1:17], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers - make sure that they exist
+folders_num = {[], [], [], [2:5], [2:5], [], [], [], [], [], [], [], []}; % recordings numbers - make sure that they exist
 data_paths = create_paths(recorders, folders_num);
 
 %% define the wanted pipeline and data split options
 options.test_split_ratio = 0.05;         % percent of the data which will go to the test set
 options.val_split_ratio  = 0.05;         % percent of the data which will go to the validation set
 options.cross_rec        = false;        % true - test and train share recordings, false - tests are a different recordings then train
-options.feat_or_data     = 'data';       % specify if you desire to extract data or features
-options.model_algo       = 'EEGNet_stft';     % ML model to train, choose from {'EEG_stft','EEGNet','EEGNet_stft','EEGNet_lstm','EEGNet_bilstm','EEGNet_gru','EEGNet_lstm_stft','EEGNet_bilstm_stft','EEGNet_gru_stft','SVM', 'ADABOOST', 'LDA'}
+options.feat_or_data     = 'feat';       % specify if you desire to extract data or features
+options.model_algo       = 'alexnet';     % ML model to train, choose from {'EEG_stft','EEGNet','EEGNet_stft','EEGNet_lstm','EEGNet_bilstm','EEGNet_gru','EEGNet_lstm_stft','EEGNet_bilstm_stft','EEGNet_gru_stft','SVM', 'ADABOOST', 'LDA'}
 options.feat_alg         = 'wavelet';    % feature extraction algorithm, choose from {'basic', 'wavelet'}
 options.cont_or_disc     = 'discrete';   % segmentation type choose from {'discrete', 'continuous'}
 options.resample         = [0,0,0];      % resample size for each class [class1, class2, class3]
@@ -64,31 +65,31 @@ train_rsmpl = train.rsmpl_data();
 
 %% create a datastore for the data - this is usefull if we want to augment our data while training the NN
 % normalize all data sets
-train.normalize_seg();
-train_rsmpl.normalize_seg();
-val.normalize_seg();
-test.normalize_seg();
+% train.normalize_seg();
+% train_rsmpl.normalize_seg();
+% val.normalize_seg();
+% test.normalize_seg();
 
 % create the data store
-train.create_ds();
-train_rsmpl.create_ds();
-val.create_ds();
-test.create_ds();
+train.create_ds('features');
+train_rsmpl.create_ds('features');
+val.create_ds('features');
+test.create_ds('features');
 
 % add augmentation functions to the train datastore (X flip & random
 % gaussian noise) - helps preventing overfitting
-train_rsmpl_aug = train_rsmpl.augment();
+% train_rsmpl_aug = train_rsmpl.augment();
 
 %% train a model - the 'algo' name will determine which model to train
 model = train_my_model(options.model_algo, options.constants, ...
-    "train_ds", train_rsmpl_aug.data_store, "val_ds", val.data_store);
+    "train_ds", train_rsmpl.data_store, "val_ds", val.data_store);
 
 %% set working points and evaluate the model on all data stores
 test.evaluate(model, CM_title = 'test', print = true);
 val.evaluate(model, CM_title = 'val', print = true);
 train.evaluate(model, CM_title = 'train', print = true);
 
-%% visualize the predictions
+%% visualize the predictions - mainly for continuous segmentation
 train.visualize("title", 'train'); 
 val.visualize("title", 'val'); 
 test.visualize("title", 'test');
@@ -101,5 +102,6 @@ mdl_struct.val_name = val.Name;
 mdl_struct.train_name = train.Name;
 uisave('mdl_struct', 'mdl_struct');
 
-%% visualize the network weights - try to explaine the network computations
-% temporal_conv_weights = model.Layers(3).Weights;
+
+
+

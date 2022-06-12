@@ -1,29 +1,37 @@
-function norm_seg = norm_eeg(segments)
-% this function normalize the data inside a datastore, use it inside the
-% 'transform' function!
+function norm_seg = norm_eeg(segments, quantiles)
+% this function normalize each channel in each segment of the eeg data 
+% seperatly according to percentiles of the data
 %
 % Inputs: 
-%   datastore: a cell array containing the data in the first column and the
-%              labels in the second column.
+%   segments: a 5D array containing the data.in the following order of
+%             dimentions (channel, time, 1, sequence, examples)
+%   quantiles: a vector containing the lower and upper percentiles to
+%              normalize the data by (e.g [0.25 0.75])
 %
 % Outputs:
-%   norm_data: a cell array containing the normalized data in the first
-%   column and the labels in the second column.
+%   norm_data: a 5D array containing the normalized data in the same
+%              dimention order as in 'segments'
 %
 %
+
+% return empty array if theres no data
+if isempty(segments)
+    norm_seg = [];
+    return
+end
 
 % normalize the data - DO NOT use normalization to [0 1] range!
-for j = 1:size(segments{1}, 1)
-    % extract quantiles for each channel in the segment
-    Q = cellfun(@(X) quantile(X(j,:), [0.1 0.9], "all"), segments, 'UniformOutput', false); 
-    % create a cell for each normed channel
-    norm_seg{j} = cellfun(@(X,Y) (X(j,:) - Y(1))./(Y(2) - Y(1)), segments, Q, 'UniformOutput', false);
+norm_seg = zeros(size(segments)); % preallocate memory
+for j = 1:size(segments, 5) % 5th dimention is for trials 
+    for i = 1:size(segments, 4) % 4th dimention is for sequence
+        for k = 1:size(segments, 3) % 3rd dimention is for "image channels" - supposed to be constant 1
+            curr_array = segments(:,:,k,i,j);
+            % extract quantiles for each channel in the segment
+            Q = quantile(curr_array.', quantiles); 
+            Q = Q.';
+            % save the normed data
+            norm_seg(:,:,k,i,j) = (curr_array - Q(:,1))./(Q(:,2) - Q(:,1));
+        end
+    end
 end
-
-% concatenate the normed channels
-for j = 2:size(segments{1}, 1)
-    norm_seg{1} = cellfun(@(X,Y) cat(1,X,Y), norm_seg{1}, norm_seg{j}, 'UniformOutput', false);
-end
-
-norm_seg = norm_seg{1};
 end

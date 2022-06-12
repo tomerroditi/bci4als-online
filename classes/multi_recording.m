@@ -17,26 +17,26 @@ classdef multi_recording < handle & matlab.mixin.Copyable & recording
                     return
                 end
                 % concatenate all the relevant data
-                obj.segments = []; obj.labels = []; obj.supp_vec = []; obj.sample_time = []; obj.rec_idx = [];
                 obj.path = {}; obj.Name = {}; obj.markers = {};
                 counter = 1;
                 for i = 1:length(recordings)
                     if ~isa(recordings{i}, 'recording')
                         error('"multi_recording" class inputs must be "recording" class objects!')
                     end
-                    obj.path        = cat(1, obj.path, recordings{i}.path);
-                    obj.Name        = cat(1, obj.Name, recordings{i}.Name);
-                    obj.markers     = cat(1, obj.markers, recordings{i}.markers);
-                    obj.segments    = cat(1, obj.segments, recordings{i}.segments);
-                    obj.labels      = cat(1, obj.labels, recordings{i}.labels);
-                    obj.supp_vec    = cat(2, obj.supp_vec, recordings{i}.supp_vec);
-                    obj.sample_time = cat(2, obj.sample_time, recordings{i}.sample_time);
-                    obj.raw_data    = cat(2, obj.raw_data, recordings{i}.raw_data);
-                    obj.features    = cat(1, obj.features, recordings{i}.features);
-                    obj.rec_idx     = cat(1, obj.rec_idx, [counter, counter + length(recordings{i}.labels) - 1]);
+                    obj.features             = cat(5, obj.features, recordings{i}.features);
+                    obj.segments             = cat(5, obj.segments, recordings{i}.segments);
+                    obj.supp_vec             = cat(2, obj.supp_vec, recordings{i}.supp_vec);
+                    obj.sample_time          = cat(2, obj.sample_time, recordings{i}.sample_time);
+                    obj.raw_data             = cat(2, obj.raw_data, recordings{i}.raw_data);
+                    obj.raw_data_filt        = cat(2, obj.raw_data_filt, recordings{i}.raw_data_filt);
+                    obj.path                 = cat(1, obj.path, recordings{i}.path);
+                    obj.Name                 = cat(1, obj.Name, recordings{i}.Name);
+                    obj.markers              = cat(1, obj.markers, recordings{i}.markers);
+                    obj.labels               = cat(1, obj.labels, recordings{i}.labels);
+                    obj.rec_idx              = cat(1, obj.rec_idx, [counter, counter + length(recordings{i}.labels) - 1]);
                     counter = counter + length(recordings{i}.labels);
                 end
-                [obj.supp_vec, obj.sample_time]   = fix_times(obj.supp_vec, obj.sample_time); % fix time points
+                [obj.supp_vec, obj.sample_time] = fix_times(obj.supp_vec, obj.sample_time); % fix time points
                 obj.options = recordings{1}.options;
                 obj.constants = recordings{1}.constants;
                 obj.num_rec = length(obj.path);
@@ -46,28 +46,51 @@ classdef multi_recording < handle & matlab.mixin.Copyable & recording
             end
         end
 
-        %% create a data set from the obj segments and labels
-        function create_ds(obj) 
-            create_ds@recording(obj)
+        %% normalizations
+        function normalize(obj, seg_raw_filt_all)
+            % normalize the recordings of the object
             for i = 1:length(obj.recordings)
-                obj.recordings{i}.create_ds
+                obj.recordings{i}.normalize(seg_raw_filt_all)
+            end
+            % retrieve normalized data into the object
+            if strcmp(seg_raw_filt_all, 'seg') || strcmp(seg_raw_filt_all, 'all')
+                obj.segments = [];
+                for i = 1:length(obj.recordings)
+                    obj.segments = cat(5,obj.segments, obj.recordings{i}.segments); 
+                end
+            end
+            if strcmp(seg_raw_filt_all, 'raw') || strcmp(seg_raw_filt_all, 'all')
+                obj.raw_data = [];
+                for i = 1:length(obj.recordings)
+                    obj.raw_data = cat(2,obj.raw_data, obj.recordings{i}.raw_data); 
+                end
+            end
+            if strcmp(seg_raw_filt_all, 'filt') || strcmp(seg_raw_filt_all, 'all')
+                obj.raw_data_filt = [];
+                for i = 1:length(obj.recordings)
+                    obj.raw_data_filt = cat(2,obj.raw_data_filt, obj.recordings{i}.raw_data_filt); 
+                end
             end
         end
 
-        %% normalization of segments
-        function normalize_ds(obj)
-            normalize_ds@recording(obj) % normalize the obj segments
+        %% features extraction
+        function extract_feat(obj)
+            obj.features = [];
+            f = waitbar(0); % open a wait bar
+            % extract features for every recording            
             for i = 1:length(obj.recordings)
-                obj.recordings{i}.normalize_seg() % normalize all recordings objects segments
+                waitbar(i/length(obj.recordings), f, ['extracting features, recording ' num2str(i) ' out of ' num2str(length(obj.recordings))]); % update the wait bar
+                obj.recordings{i}.extract_feat();
+                obj.features = cat(5, obj.features, obj.recordings{i}.features); % concate the features to create the multi recording features
             end
+            delete(f) % close the wait bar
         end
 
-        %% normalization of raw data
-        function normalize_raw(obj)
-            obj.normed_raw_data = [];
-            for i = 1:obj.num_rec
-                obj.recordings{i}.normalize_raw();
-                obj.normed_raw_data = cat(2,obj.normed_raw_data, obj.recordings{i}.normed_raw_data);
+        %% create a data store (DS) from the obj segments and labels
+        function create_ds(obj, feat_seg)
+            create_ds@recording(obj, feat_seg)
+            for i = 1:length(obj.recordings)
+                obj.recordings{i}.create_ds(feat_seg)
             end
         end
 
@@ -102,7 +125,7 @@ classdef multi_recording < handle & matlab.mixin.Copyable & recording
             end
         end
 
-        %% train test validation split ### need to add an option for cross recordings split ###
+        %% train test validation split
         function [train, test, val] = train_test_split(obj, args)
             arguments
                 obj
@@ -116,11 +139,7 @@ classdef multi_recording < handle & matlab.mixin.Copyable & recording
             split_rec_idx = randperm(obj.num_rec, obj.num_rec);
             % allocate indices for each set
             test_idx  = split_rec_idx(1:num_test);
-            if num_val > 0
-                val_idx   = split_rec_idx(num_test + 1:num_test + num_val);
-            else
-                val_idx = [];
-            end
+            val_idx   = split_rec_idx(num_test + 1:num_test + num_val);
             train_idx = split_rec_idx(num_test + num_val + 1:end);
             % create new objects
             train = multi_recording(obj.recordings(train_idx));

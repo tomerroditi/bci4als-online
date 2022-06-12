@@ -23,12 +23,14 @@ time_diff = time(2:end) - time(1:end-1);
 new_rec_idx = find(time_diff < 0) + 1;
 
 time_samp = [time_samp 0]; % we concatenate the 0 for the for loop to be able to correct the last recording
-all_time_diff = time_samp(2:end) - time_samp(1:end-1);
-new_rec_idx_seg = find(all_time_diff < 0) + 1;
+time_diff_seg = time_samp(2:end) - time_samp(1:end-1);
+new_rec_idx_seg = find(time_diff_seg < 0) + 1;
 
 % make the time continuous
 for i = 1:length(new_rec_idx) - 1
     time(new_rec_idx(i):new_rec_idx(i + 1) - 1) = time(new_rec_idx(i):new_rec_idx(i + 1) - 1) + time(new_rec_idx(i) - 1);
+end
+for i = 1:length(new_rec_idx_seg) - 1
     time_samp(new_rec_idx_seg(i):new_rec_idx_seg(i + 1) - 1) = time_samp(new_rec_idx_seg(i):new_rec_idx_seg(i + 1) - 1) + time(new_rec_idx(i) - 1);
 end
 

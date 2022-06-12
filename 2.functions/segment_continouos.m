@@ -102,4 +102,7 @@ times(seg_idx(end) - end_buff + 1:end) = []; % trim unused times
 times = [times, ((1:(step_size - 1)).*(1./Fs) + times(end))]; % add time points for future concatenating
 sup_vec = [sup_vec, zeros(1,step_size - 1)]; % add zeros for future concatenating
 sup_vec = [sup_vec; times];
+
+% reject noisy segments - high amplitude
+%#### insert code here #####
 end

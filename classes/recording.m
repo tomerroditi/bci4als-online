@@ -1,27 +1,26 @@
 classdef recording < handle & matlab.mixin.Copyable
     properties (SetAccess = protected)
-        path        
-        options
-        Name 
-        raw_data
-        normed_raw_data
-        normed_segments
-        markers
-        segments
-        features
-        labels
-        supp_vec 
-        data_store 
-        sample_time 
-        constants
-        predictions
-        fc_act
-        mdl_output
-        file_type
+        path                    % the path of the data file
+        options                 % the options structure
+        Name                    % the name of the recording
+        raw_data                % raw data from file
+        raw_data_filt           % filtered raw data
+        markers                 % markers structure
+        segments                % segmented data
+        features                % extracted features
+        labels                  % data labels
+        supp_vec                %
+        data_store              % a data store containing the segments and labels
+        sample_time             % the time point that each segments ends in
+        constants               % a Constant object
+        predictions             % predictions for some model
+        fc_act                  % the last fully connected activations of the givven model to the data store 
+        mdl_output              % outputs of a givven model to the data store
+        file_type               % data file type - 'edf','xdf'
     end
 
     methods
-        %% define the object
+        %% construct the object
         function obj = recording(file_path, options)
             if nargin > 0 % support empty objects
                 obj.path = file_path;
@@ -53,50 +52,58 @@ classdef recording < handle & matlab.mixin.Copyable
                 [segments, obj.labels, obj.supp_vec, obj.sample_time] = ...
                     MI2_SegmentData(obj.raw_data, obj.markers, labels, options); % create segments
                 segments = MI3_Preprocess(segments, options.cont_or_disc, obj.constants); % filter the segments
-                if strcmp(options.feat_or_data, 'feat')
-                    obj.features = get_features(segments, feat_alg); % create features if needed
-                end 
-                [obj.segments] = create_sequence(segments, options);
+                obj.raw_data_filt = MI3_Preprocess(obj.raw_data, options.cont_or_disc, obj.constants);                
+                obj.segments = create_sequence(segments, options);
             end
         end
 
-        %% normalization of segments
-        function normalize_seg(obj)
-            if ~isempty(obj.segments)
-                obj.normed_segments = norm_eeg(obj.segments);
+        %% normalizations - you can choose what data to normalize (segments/raw data/filtered raw data)
+        function normalize(obj, seg_raw_filt_all)
+            if strcmp(seg_raw_filt_all, 'segments') || strcmp(seg_raw_filt_all, 'all')
+                obj.segments = norm_eeg(obj.segments, obj.constants.quantiles);
+            end
+            if strcmp(seg_raw_filt_all, 'raw') || strcmp(seg_raw_filt_all, 'all')
+                obj.raw_data = norm_eeg(obj.raw_data, obj.constants.quantiles);
+            end
+            if strcmp(seg_raw_filt_all, 'filt') || strcmp(seg_raw_filt_all, 'all')
+                obj.raw_data_filt = norm_eeg(obj.raw_data_filt, obj.constants.quantiles);
             end
         end
 
-        %% normalize raw data
-        function normalize_raw(obj)
-            obj.normed_raw_data = [];
-            for i = 1:size(obj.raw_data,1)
-                curr_channel = obj.raw_data(i,:);
-                Q = quantile(curr_channel, [0.25 0.75], "all");
-                curr_channel =  (curr_channel - Q(1))./(Q(2) - Q(1));
-                obj.normed_raw_data = cat(1, obj.normed_raw_data, curr_channel);
+        %% feature extraction 
+        function extract_feat(obj)
+            % if object is empty then do nothing
+            if isempty(obj.segments) 
+                return
+            end
+            % choose the desired feature extraction method based on feat_alg
+            if strcmp(obj.options.feat_alg, 'wavelet')
+                obj.features = wavelets(obj);
+            elseif strcmp(obj.options.feat_alg, 'basic')
+                obj.features = MI4_ExtractFeatures(obj.segments); % this is not supported yet
+            elseif strcmp(obj.options.feat_alg, 'none')
+                return
+            else
+                error('pls choose an available feature algorithm')
             end
         end
-                     
-        %% create a new obj with resampled segments (data)
+       
+        %% create a new obj with resampled segments
         function new_obj = rsmpl_data(obj, args)
             arguments
                 obj
                 args.resample = obj.options.resample
             end
             new_obj = copy(obj);
-            if ~isempty(obj.segments) && ~isempty(obj.labels)
-                [new_obj.segments, new_obj.labels] = resample_data(obj.segments, obj.labels, args.resample, true);
-            end
+            [new_obj.segments, new_obj.labels] = resample_data(new_obj.segments, new_obj.labels, args.resample, true);
         end
             
-        %% create a data store from the obj segments (normalized!) and labels
-        function create_ds(obj) 
-            if isempty(obj.normed_segments)
-                obj.normalize_seg()
-            end
-            if ~isempty(obj.normed_segments) && ~isempty(obj.labels)
-                obj.data_store = set2ds(obj.normed_segments, obj.labels, obj.constants);
+        %% create a data store (DS) from the obj segments (normalized!) and labels
+        function create_ds(obj, feat_seg) 
+            if strcmp(feat_seg, 'segments') % use processed data to create ds
+                obj.data_store = set2ds(obj.segments, obj.labels, obj.constants);
+            elseif strcmp(feat_seg, 'features') % use features to create ds
+                obj.data_store = set2ds(obj.features, obj.labels, obj.constants);
             end
         end
    
@@ -118,9 +125,6 @@ classdef recording < handle & matlab.mixin.Copyable
                 options.criterion = [];
                 options.criterion_thresh = [];
                 options.print = false;
-            end
-            if isempty(obj.data_store) % create a data store if its empty
-                obj.create_ds;
             end
             if ~isempty(obj.data_store) % check if the obj is not empty
                 [pred, thresh, CM] = evaluation(model, obj.data_store, CM_title = options.CM_title, ...
@@ -148,21 +152,21 @@ classdef recording < handle & matlab.mixin.Copyable
             % find the FC layer index
             fc = 0;
             for i = 1:length(model.Layers)
-                if strcmp('fc', model.Layers(i).Name)
-                    layer_name = model.Layers(i - 1).Name;
+                if strcmp('activations', model.Layers(i).Name)
                     fc = 1;
+                    break
                 end
             end
             if fc
                 % extract activations from the fc layer
                 obj.fc_act = activations(model, obj.data_store, layer_name);
                 dims = 1:length(size(obj.fc_act)); % create a dimention order vector
-                dims = [length(size(obj.fc_act)), dims(1:end - 1)]; % shift last dim (batch size) to be the first
+                dims = [dims(end), dims(1:end - 1)]; % shift last dim (batch size) to be the first
                 obj.fc_act = squeeze(permute(obj.fc_act, dims));
                 obj.fc_act = reshape(obj.fc_act, [size(obj.fc_act,1), size(obj.fc_act,2)*size(obj.fc_act,3)]);
             else
-                disp(['No fully connected layer found, pls check the model architecture and the layers names.' newline...
-                    'If there is a fully conected layer then change the layer name to "fc"'])
+                disp(['No layer named "activations" found, pls check the model architecture and the layers names,' newline...
+                    'and change the fully connected layer name you would like to visualize to "activations"'])
             end
         end
 

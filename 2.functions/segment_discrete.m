@@ -39,20 +39,26 @@ labels = str2double(marker_sign(strcmp(marker_sign, '3.000000000000000') | ...
     strcmp(marker_sign, '2.000000000000000') | strcmp(marker_sign, '1.000000000000000'))); 
 
 % segment the data 
+% filter the data to remove drifts and biases, so we could set a common
+% threshold to all recordings for finding corapted segments. we add zeros
+% to keep both signals align with each other.
+filtered_data = cat(2,zeros(size(data,1), constants.BUFFER_START), MI3_Preprocess(data, 'discrete', constants));
 start_times_indices = marker_times(strcmp(marker_sign, '1111.000000000000'));
 segments = [];
 for i = 1:length(start_times_indices)
     if start_times_indices(i) - seg_pre_start - buff_start < 1
-        labels(1) = [];
-        seg_time_sampled(1) = [];
-        continue
+        labels(i) = -1;
     elseif start_times_indices(i) + seg_post_start + buff_end > size(data, 2)
-        labels(end) = [];
-        seg_time_sampled(end) = [];
-        continue
+        labels(i) = -1;
+    % reject noisy trials (high amplitude)
+    elseif max(max(abs(filtered_data(:,start_times_indices(i) - seg_pre_start  : start_times_indices(i) + seg_post_start)))) > 100
+        labels(i) = -1;
+    else
+        seg = data(:,start_times_indices(i) - seg_pre_start - buff_start : start_times_indices(i) + seg_post_start + buff_end - 2);
+        segments = cat(3,segments,seg);
     end
-        segments(:,:,end + 1) = data(:,start_times_indices(i) - seg_pre_start - buff_start : start_times_indices(i) + seg_post_start + buff_end - 2);
 end
-segments(:,:,1) = []; % clear zeros
+seg_time_sampled(labels == -1) = []; % delete unused trials sampling times
+labels(labels == -1) = []; % delete unused trials labels
 end
 

@@ -1,4 +1,4 @@
-function Selected_Idx = MI5_feature_selection(all_feat,all_labels, saving_folder)
+function Selected_Idx = MI5_feature_selection(feat, labels)
 % this is the feature selection process in the pipeline
 %
 % Input:
@@ -11,7 +11,7 @@ function Selected_Idx = MI5_feature_selection(all_feat,all_labels, saving_folder
 % ###### need to change and improve the feature selection process #######
 
 
-class = fscnca(all_feat, all_labels); % feature selection
+class = fscnca(feat, labels); % feature selection
 
 % sorting the weights in desending order and keeping the indexs
 [~, selected] = sort(class.FeatureWeights,'descend');

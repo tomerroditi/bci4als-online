@@ -11,6 +11,20 @@ function data_paths = create_paths(recorders, folders_num)
 %               and labels
 %
 
+
+% return an empty array if recordings are not provided
+empty_flag = 1;
+for i = 1:length(folders_num)
+    if ~isempty(folders_num{i})
+        empty_flag = 0;
+        break
+    end
+end
+if empty_flag
+    data_paths = [];
+    return
+end
+
 % get the local path of the project folder
 root_path = which("create_paths");
 root_path = split(root_path, {'\','/'});
