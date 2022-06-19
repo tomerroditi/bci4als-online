@@ -4,7 +4,7 @@ function filt_data = MI3_Preprocess(segments, cont_or_disc, constants)
 %
 % Inputs:
 %   - segments - a 3D matrix containing the segmented raw data, its
-%   dimentions are [trials, channels, time (data samples)].
+%   dimentions are [channels, time, 1 ,trials].
 %   - cont_or_disc - a string specifying if the segmentation type is
 %   continuous or discrete.
 %   - constants: a Constants object containing some constants for the
@@ -54,8 +54,8 @@ if isempty(BP_filter)
     
     h = fdesign.notch('N,F0,BW', N, F0, BW, Fs);
     h_2 = fdesign.notch('N,F0,BW', N, 31.3, BW, Fs); % i dont know what causes the noise in that frequency 
-                                                     % (~31.3 HZ) but its there.. might be related to the bluetooth transmition
-
+                                                     % (~31.25 HZ) but its there.. might be related to the
+                                                     % sampling rate since 125/4 = 31.25
 
 notch_filter = design(h, 'butter', ...
     'SOSScaleNorm', 'Linf');
@@ -70,6 +70,9 @@ end
 trial_length = size(segments,2);
 filt_data = zeros(num_channels,trial_length - buff_start - buff_end, 1, num_trials);
 
+% filter the data
+% NOTICE that there is not difference between cont and disc for now we
+% might change it later if needed!
 if strcmp(cont_or_disc, 'discrete')
     for i = 1:num_trials
         % BP filtering
@@ -82,8 +85,6 @@ if strcmp(cont_or_disc, 'discrete')
         filt_data(:,:,:,i) = temp(:,buff_start + 1:end - buff_end);
     end
 elseif strcmp(cont_or_disc, 'continuous')
-    % NOTICE that there is not difference between cont and disc for now we
-    % might change it later if needed!
     for i = 1:num_trials
         % BP filtering
         temp = filter(BP_filter, squeeze(segments(:,:,:,i)).');

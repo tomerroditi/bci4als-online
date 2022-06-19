@@ -41,7 +41,7 @@ labels = str2double(marker_sign(strcmp(marker_sign, '3.000000000000000') | ...
 % segment the data 
 % filter the data to remove drifts and biases, so we could set a common
 % threshold to all recordings for finding corapted segments. we add zeros
-% to keep both signals align with each other.
+% to keep both signals align with each other (the segments are not filtered!)
 filtered_data = cat(2,zeros(size(data,1), constants.BUFFER_START), MI3_Preprocess(data, 'discrete', constants));
 start_times_indices = marker_times(strcmp(marker_sign, '1111.000000000000'));
 segments = [];

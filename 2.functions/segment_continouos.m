@@ -51,7 +51,7 @@ overlap_size = floor(overlap_duration*Fs +start_buff + end_buff + seq_step_size*
 step_size = segment_size - overlap_size; % step size between 2 segments
 
 % initialize empty segments matrix and labels vector
-num_segments = floor((size(data,2) - segment_size)/step_size) + 1;
+num_segments = floor((size(data,2) - segment_size - Fs*5)/step_size) + 1; % exclude the last 5 seconds because when i recorded myself i moved my hand to stop the recording
 num_channels = size(data,1);
 segments = zeros(num_channels, segment_size, num_segments);
 labels = zeros(num_segments, 1);
@@ -71,7 +71,11 @@ for j = 1:size(data,2)
     end
 end
 
-% segment the data and create a new labels vector
+% segment the data and create a new labels vector.
+% filter the data to remove drifts and biases, so we could set a common
+% threshold to all recordings for finding corapted segments. we add zeros
+% to keep both signals align with each other (the segments are not filtered!)
+filtered_data = cat(2,zeros(size(data,1), constants.BUFFER_START), MI3_Preprocess(data, 'continuous', constants));
 times = (0:(size(data,2) - 1))./Fs;
 seg_time_sampled = zeros(1,num_segments);
 start_idx = 1;
@@ -83,6 +87,12 @@ for i = 1:num_segments
 
     % track time stamps of the end of segments
     seg_time_sampled(i) = times(seg_idx(end) - end_buff);
+
+    % find noisy segments - high amplitude
+    if max(max(abs(filtered_data(:,seg_idx)))) > 100
+        labels(i) = -1;
+        continue
+    end
 
     % find the ith label
     tags = sup_vec(seg_idx);
@@ -97,12 +107,14 @@ for i = 1:num_segments
         labels(i) = 1; 
     end
 end
-sup_vec(seg_idx(end) - end_buff + 1:end) = []; % trim unused labels
+sup_vec(seg_idx(end) - end_buff + 1:end) = []; % trim unused labels in the support vector
 times(seg_idx(end) - end_buff + 1:end) = []; % trim unused times
 times = [times, ((1:(step_size - 1)).*(1./Fs) + times(end))]; % add time points for future concatenating
 sup_vec = [sup_vec, zeros(1,step_size - 1)]; % add zeros for future concatenating
 sup_vec = [sup_vec; times];
 
 % reject noisy segments - high amplitude
-%#### insert code here #####
+seg_time_sampled(labels == -1) = [];
+segments(:,:,labels == -1) = [];
+labels(labels == -1) = [];
 end
