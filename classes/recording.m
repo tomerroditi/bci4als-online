@@ -23,6 +23,7 @@ classdef recording < handle & matlab.mixin.Copyable
         %% construct the object
         function obj = recording(file_path, options)
             if nargin > 0 % support empty objects
+                options = validate_options(options);
                 obj.path = file_path;
                 obj.constants = options.constants;
                 if strcmp(options.cont_or_disc, 'discrete') % sequence length must be 1 for discrete segmentation
@@ -44,7 +45,7 @@ classdef recording < handle & matlab.mixin.Copyable
                     labels = labels.labels;
                 elseif ~isempty(dir([file_path '\*.edf'])) 
                     obj.file_type = 'edf';
-                    [obj.raw_data, obj.markers, labels] = edf2data(file_path);
+                    [obj.raw_data, obj.markers, labels] = edf2data(file_path); % extract data from edf files
                     obj.raw_data(obj.constants.edf_removed_chan,:) = []; % remove unused channels
                 else
                     error('Error. only {"xdf","edf"} file types are supported for loading data')
@@ -52,13 +53,16 @@ classdef recording < handle & matlab.mixin.Copyable
                 [segments, obj.labels, obj.supp_vec, obj.sample_time] = ...
                     MI2_SegmentData(obj.raw_data, obj.markers, labels, options); % create segments
                 segments = MI3_Preprocess(segments, options.cont_or_disc, obj.constants); % filter the segments
-                obj.raw_data_filt = MI3_Preprocess(obj.raw_data, options.cont_or_disc, obj.constants);                
-                obj.segments = create_sequence(segments, options);
+                obj.raw_data_filt = MI3_Preprocess(obj.raw_data, options.cont_or_disc, obj.constants); % filter raw data               
+                obj.segments = create_sequence(segments, options); % create sequences
             end
         end
 
         %% normalizations - you can choose what data to normalize (segments/raw data/filtered raw data)
         function normalize(obj, seg_raw_filt_all)
+            if isempty(obj.raw_data) % do nothing if the object doesnt contains data (empty object)
+                return
+            end
             if strcmp(seg_raw_filt_all, 'segments') || strcmp(seg_raw_filt_all, 'all')
                 obj.segments = norm_eeg(obj.segments, obj.constants.quantiles);
             end
@@ -98,11 +102,16 @@ classdef recording < handle & matlab.mixin.Copyable
             [new_obj.segments, new_obj.labels] = resample_data(new_obj.segments, new_obj.labels, args.resample, true);
         end
             
-        %% create a data store (DS) from the obj segments (normalized!) and labels
-        function create_ds(obj, feat_seg) 
-            if strcmp(feat_seg, 'segments') % use processed data to create ds
+        %% create a data store (DS) from the obj segments and labels
+        function create_ds(obj) 
+            if isempty(obj.raw_data)
+                return
+            end
+            
+            feat_data = obj.options.feat_or_data;
+            if strcmp(feat_data, 'data') % use processed data to create ds
                 obj.data_store = set2ds(obj.segments, obj.labels, obj.constants);
-            elseif strcmp(feat_seg, 'features') % use features to create ds
+            elseif strcmp(feat_data, 'feat') % use features to create ds
                 obj.data_store = set2ds(obj.features, obj.labels, obj.constants);
             end
         end
@@ -115,7 +124,7 @@ classdef recording < handle & matlab.mixin.Copyable
             end
         end
 
-        %% classification and evaluation
+        %% evaluation & classification 
         function [pred, thresh, CM] = evaluate(obj, model, options)
             arguments
                 obj
@@ -236,6 +245,83 @@ classdef recording < handle & matlab.mixin.Copyable
                 scatter_2D(points, obj);
             elseif num_dim == 3
                 scatter_3D(points, obj);
+            end
+        end
+
+        %% gesture detection
+        function [CM, time_gest] = detect_gestures(obj, K, cool_time, print)
+        % K - the number of gesture detected in a raw to execute a gesture
+        % cool_time - time window to not execute a gesture after executing a gesture
+            
+        % create a vector of the gesture execution times and labels
+            time_gest = [0;0]; % initialize a vector for gesture class and time of execution
+            for i = K:length(obj.labels)
+                if obj.sample_time(i) - time_gest(2,end) < cool_time
+                    continue
+                end
+                if obj.predictions(i - K + 1:i) == 2
+                        time_gest(1,i) = 2;
+                        time_gest(2,i) = obj.sample_time(i);
+                elseif obj.predictions(i - K + 1:i) == 3
+                        time_gest(1,i) = 3;
+                        time_gest(2,i) = obj.sample_time(i);
+                end
+            end
+            time_gest(:,time_gest(1,:) == 0) = []; % remove zeros
+            % check if we execute the correct gestures and calculate the accuracy
+            seg_dur = obj.options.seg_dur; % duration of the segments
+            Fs = obj.constants.SAMPLE_RATE;
+            true_gesture = ones(1,length(time_gest));
+            thresh = 0.5;                            % ###### might need to change this #######
+            for i = 1:length(time_gest)
+                idx = find(obj.supp_vec(2,:) == time_gest(2,i));
+                time_points_labels = obj.supp_vec(1,idx - floor(Fs*seg_dur) + 1:idx);
+                if sum(time_points_labels == 2) > thresh
+                    true_gesture(i) = 2;
+                elseif sum(time_points_labels == 3) > thresh
+                    true_gesture(i) = 3;
+                end
+            end
+            % check for missed gestures
+            gesture_changes = obj.supp_vec(1, 2:end) - obj.supp_vec(1, 1:end-1);
+            gest_2_idx = find(gesture_changes == 1) + 1;
+            gest_3_idx = find(gesture_changes == 2) + 1;
+            true_gest_times_2 = obj.supp_vec(2, gest_2_idx);
+            true_gest_times_3 = obj.supp_vec(2, gest_3_idx);
+            missed_gest = 0;
+            % missed class 2
+            for i = 1:length(true_gest_times_2)
+                time_diff_2 = time_gest(2,:) - true_gest_times_2(i);
+                if min(time_diff_2(time_diff_2 > 0)) > 5     % i chose 5 cause our protocol is 5 second gestures
+                    missed_gest = missed_gest + 1;
+                    time_gest = cat(2, time_gest, [1;true_gest_times_2(i)]);
+                    true_gesture(end + 1) = 2;
+                end
+            end
+            % missed class 3
+            for i = 1:length(true_gest_times_3)
+                time_diff_3 = time_gest(2,:) - true_gest_times_3(i);
+                if min(time_diff_3(time_diff_3 > 0)) > 5     % i chose 5 cause our protocol is 5 second gestures
+                    missed_gest = missed_gest + 1;
+                    time_gest = cat(2, time_gest, [1;true_gest_times_3(i)]);
+                    true_gesture(end + 1) = 3;
+                end
+            end
+            % calculate the accuracy and CM
+            CM = confusionmat(true_gesture,time_gest(1,:));
+            accuracy = sum(diag(CM))/sum(sum(CM));
+
+            % plot the gestures 
+            if print
+                disp(['model accuracy is: ' num2str(accuracy)]);
+                
+                figure('Name', 'gesture execution moments')
+                plot(obj.supp_vec(2,:), obj.supp_vec(1,:), 'r*', 'MarkerSize', 1); hold on;
+                plot(time_gest(2,:), time_gest(1,:), 'bs', 'MarkerSize', 2);
+                xlabel('time [s]'); ylabel('class'); title('gesture execution moments');
+    
+                figure('Name', 'geasture detection CM')
+                confusionchart(CM);
             end
         end
     end

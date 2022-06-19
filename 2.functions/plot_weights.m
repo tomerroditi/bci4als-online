@@ -28,8 +28,9 @@ function [] = plot_weights(model, used_electrodes)
         plot(freqs,transformedWs)
         % this limit is pretty arbitrary, yet we want to keep all plots up
         % to the same scale
-        ylim([0 2.5])
-        xticks([freqs(1) 7 30 freqs(end)]);
+        ylim([0 4])
+        xticks([freqs(1):5:freqs(end)]);
+        xlim([4 35])      % change this limit according to the filters you are ussing
         xlabel('Frequency (Hz)')
         ylabel('Amp')
         title(strcat('Temporal Filter=', num2str(indTempFilter)));

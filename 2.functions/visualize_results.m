@@ -15,8 +15,9 @@ if isempty(class_time) || isempty(pred) || isempty(seg_time)
     return
 end
 % plot the labels and predictions over time
-figure('Name', [title ' - classification visualization'])
-plot(class_time(2,:), class_time(1,:), 'r*', 'MarkerSize', 2); hold on; xlabel('time'); ylabel('labels');
-plot(seg_time, pred, 'b+', 'MarkerSize', 2)
+figure('Name', [title ' - classification visualization']);
+plot(class_time(2,:), class_time(1,:), 'r*', 'MarkerSize', 2); hold on;
+plot(seg_time, pred, 'b+', 'MarkerSize', 2);
+xlabel('time'); ylabel('labels');
 
 end
