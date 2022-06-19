@@ -15,7 +15,7 @@
 % parameters 'ValidationFrequency', 'ValidationPatience',
 % 'LearnRateDropPeriod' should consider the data_store size instead of
 % being a constant size.
-% - 
+% - need to figure out how to use the parfor 
 
 clc; clear all; close all;
 % a quick paths check and setup (if required) for the script
@@ -29,19 +29,24 @@ data_paths = create_paths(recorders, folders_num);
 % currently bad recordings from tomer: [1,2] 
 
 %% define the wanted pipeline and data split options
-options.test_split_ratio = 0.1;          % percent of the data which will go to the test set
-options.val_split_ratio  = 0.1;          % percent of the data which will go to the test set - if set to 0 val set isn't created
+options.test_split_ratio = 0.05;         % percent of the data which will go to the test set
+options.val_split_ratio  = 0.05;         % percent of the data which will go to the validation set
 options.cross_rec        = false;        % true - test and train share recordings, false - tests are a different recordings then train
-options.feat_or_data     = 'data';       % return "train" as data or features
-options.model_algo       = 'EEGNet_lstm';% ML model to train, choose from {'EEGNet', 'EEGNet_lstm','SVM', 'ADABOOST', 'LDA'}
+options.feat_or_data     = 'data';       % specify if you desire to extract data or features
+options.model_algo       = 'EEGNet';     % ML model to train, choose from {'EEG_stft','EEGNet','EEGNet_stft','EEGNet_lstm','EEGNet_bilstm','EEGNet_gru','EEGNet_lstm_stft','EEGNet_bilstm_stft','EEGNet_gru_stft','SVM', 'ADABOOST', 'LDA'}
 options.feat_alg         = 'wavelet';    % feature extraction algorithm, choose from {'basic', 'wavelet'}
-options.cont_or_disc     = 'continuous'; % segmentation type choose from {'discrete', 'continuous'}
-options.seg_dur          = 5;            % segments duration in seconds
-options.overlap          = 4.5;          % following segments overlapping duration in seconds
-options.threshold        = 0.7;          % threshold for labeling in continuous segmentation - percentage of the window containing the class (0-1)
-options.sequence_len     = 7;            % length of a sequence to enter in sequence DL models
-options.resample         = [0,3,3];      % resample size for each class [class1, class2, class3]
-options.constants        = constants();  % a class member with constants that are used in the pipeline 
+options.cont_or_disc     = 'discrete';   % segmentation type choose from {'discrete', 'continuous'}
+options.resample         = [0,0,0];      % resample size for each class [class1, class2, class3]
+options.constants        = constants();  % a class member with constants that are used in the pipeline
+% discrete only
+options.pre_start        = 0.5;          % duration in seconds to include in segments before the start marker
+options.post_start       = 3;            % duration in seconds to include in segments after the start marker
+% continuous only
+options.seg_dur          = 4;            % duration in seconds of each segment
+options.overlap          = 4;            % duration in seconds of following segments overlapping
+options.sequence_len     = 1;            % number of segments in a sequence (for sequential DL models)
+options.sequence_overlap = 2;            % duration in seconds of overlap between following segments in a sequence
+options.threshold        = 0.7;          % threshold for labeling - percentage of the segment containing the class (only values from 0-1 range)
 
 %% create all the desired options for training 
 seg_dur = [2.5, 3, 3.5, 4, 4.5, 5];
@@ -68,7 +73,7 @@ end
 
 %% train models with different options
 models = cell(5,length(options));
-for k = 1:length(options_set)
+parfor k = 1:length(options_set) %####### need to figure out how to use the parfor #######
     options = options_set{k};
     
     % preprocess the data into train, test and validation sets
@@ -77,7 +82,7 @@ for k = 1:length(options_set)
         recordings{i} = recording(data_paths{i}, options); % crete a class member for each path
     end
     all_rec = multi_recording(recordings); % create a class member from all paths
-    [train, test, val] = all_rec.train_test_split(); % create class member for each set
+    [train, test, val] = all_rec.train_test_split(); % create class member for each set - we might want to create a constant devision, hence this needs to be changed!
     
     % check data distribution in each data set
     train_distr = tabulate(train.labels);
@@ -86,19 +91,13 @@ for k = 1:length(options_set)
 
     % resample train set - this is how we reballance our training distribution
     train_rsmpl = train.rsmpl_data("resample",[0 round(ratio_1_2 - 1) round(ratio_1_3 - 1)]);
-    
-    
-    % create a datastore for the data - this is usefull if we want to augment our data while training the NN
+
+    % create a datastore from the normed data - this is usefull if we want to augment our data while training the NN
+    % notice that this function uses the normalized segments
     train.create_ds();
     train_rsmpl.create_ds();
     val.create_ds();
     test.create_ds();
-    
-    % normalize all data sets
-    train.normalize_ds();
-    train_rsmpl.normalize_ds();
-    val.normalize_ds();
-    test.normalize_ds();
     
     % add augmentation functions to the train datastore (X flip & random
     % gaussian noise) - helps preventing overfitting
@@ -119,18 +118,3 @@ for k = 1:length(options_set)
     mdl_struct.train_name = train.Name;
     save([path '\mdl_struct'], 'mdl_struct')
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

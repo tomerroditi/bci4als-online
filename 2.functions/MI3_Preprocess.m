@@ -4,13 +4,16 @@ function filt_data = MI3_Preprocess(segments, cont_or_disc, constants)
 %
 % Inputs:
 %   - segments - a 3D matrix containing the segmented raw data, its
-%   dimentions are [trials, channels, time (data samples)].
+%   dimentions are [channels, time, 1 ,trials].
 %   - cont_or_disc - a string specifying if the segmentation type is
 %   continuous or discrete.
+%   - constants: a Constants object containing some constants for the
+%                preprocessing process.
 %
 % Output:
 %   - postprocces_segments - a 3D matrix of the segments after being
-%   preproccesed, the dimentions are the same as in 'segments'
+%                            preproccesed, the dimentions are the same as
+%                            in 'segments'
 
 % Notes - add in the future:
 % - see comments in the end the script
@@ -33,7 +36,7 @@ notch_width  = constants.NOTCH_WIDTH;
 % implement a bandpass filter and a notch filter.
 % we will use IIR filters to get faster preprocessing in the online sessions.
 
-persistent BP_filter notch_filter; 
+persistent BP_filter notch_filter notch_filter_25; 
 
 if isempty(BP_filter)
     % design an IIR bandpass filter
@@ -50,18 +53,26 @@ if isempty(BP_filter)
     BW = notch_width;  % Bandwidth
     
     h = fdesign.notch('N,F0,BW', N, F0, BW, Fs);
-
+    h_2 = fdesign.notch('N,F0,BW', N, 31.3, BW, Fs); % i dont know what causes the noise in that frequency 
+                                                     % (~31.25 HZ) but its there.. might be related to the
+                                                     % sampling rate since 125/4 = 31.25
 
 notch_filter = design(h, 'butter', ...
     'SOSScaleNorm', 'Linf');
+notch_filter_25 = design(h_2, 'butter', ...
+    'SOSScaleNorm', 'Linf');
 
 set(notch_filter,'PersistentMemory',true);    % save the filter in memory for next function call
+set(notch_filter_25,'PersistentMemory',true);    % save the filter in memory for next function call
 set(BP_filter,'PersistentMemory',true);       % save filter in memory for next function call
 end
 
 trial_length = size(segments,2);
 filt_data = zeros(num_channels,trial_length - buff_start - buff_end, 1, num_trials);
 
+% filter the data
+% NOTICE that there is not difference between cont and disc for now we
+% might change it later if needed!
 if strcmp(cont_or_disc, 'discrete')
     for i = 1:num_trials
         % BP filtering
@@ -69,18 +80,18 @@ if strcmp(cont_or_disc, 'discrete')
         temp = temp.';
         % notch filtering
         temp = filter(notch_filter, temp, 2);
+        temp = filter(notch_filter_25, temp, 2);
         % allocate the filtered data into a new matrix
         filt_data(:,:,:,i) = temp(:,buff_start + 1:end - buff_end);
     end
 elseif strcmp(cont_or_disc, 'continuous')
-    % NOTICE that there is not difference between cont and disc for now we
-    % might change it later if needed!
     for i = 1:num_trials
         % BP filtering
         temp = filter(BP_filter, squeeze(segments(:,:,:,i)).');
         temp = temp.';
         % notch filtering
         temp = filter(notch_filter, temp, 2);
+        temp = filter(notch_filter_25, temp, 2);
         % allocate the filtered data into a new matrix
         filt_data(:,:,:,i) = temp(:,buff_start + 1:end - buff_end);
     end

@@ -1,4 +1,4 @@
-function multi_rec = paths2Mrec(paths, options, args)
+function multi_rec = paths2Mrec(paths, options)
 % this function creates a multi recording object from the given paths and
 % options
 %
@@ -11,11 +11,6 @@ function multi_rec = paths2Mrec(paths, options, args)
 %   multi_rec: a multi recording object containing the data from the data
 %              paths, preprocessed as specified in options
 
-arguments
-    paths
-    options
-    args.file_type = 'XDF';
-end
 
     % create a waitbar to show progress
     f = waitbar(0, 'preprocessing data, pls wait');
@@ -23,7 +18,7 @@ end
     recordings = cell(1,length(paths));
     for i = 1:length(paths)
         waitbar(i/length(paths), f, ['preprocessing data, recording ' num2str(i) ' out of ' num2str(length(paths))]); % update the wait bar
-        recordings{i} = recording(paths{i}, options); % crete a class member for each path
+        recordings{i} = recording(paths{i}, options); % create a class member for each path
     end
     multi_rec = multi_recording(recordings); % create a class member from all paths
     delete(f); %close the wait bar

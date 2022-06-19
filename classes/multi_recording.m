@@ -1,7 +1,6 @@
 classdef multi_recording < handle & matlab.mixin.Copyable & recording
     properties (SetAccess = protected)
-        rec_idx
-        recordings
+        rec_idx     % indices of segments of each recording
         num_rec
     end
 
@@ -10,91 +9,57 @@ classdef multi_recording < handle & matlab.mixin.Copyable & recording
     end
 
     methods
-        % define the object
+        %% define the object
         function obj = multi_recording(recordings)
             if nargin > 0  % support an empty class members
                 if isempty(recordings)
                     return
                 end
                 % concatenate all the relevant data
-                obj.segments = []; obj.labels = []; obj.supp_vec = []; obj.sample_time = []; obj.rec_idx = [];
-                obj.path = {}; obj.Name = {}; obj.markers = {};
-                counter = 1;
+                obj.path = {}; obj.Name = {}; obj.markers = {}; obj.rec_idx = {};
+                counter_seg = 1; counter_raw = 1; counter_filt = 1;
+                obj.options = recordings{1}.options;
+                obj.constants = recordings{1}.constants;
                 for i = 1:length(recordings)
+                    if isempty(recordings{i}.raw_data)
+                        continue
+                    end
+                    if ~isequal(obj.options, recordings{i}.options) || ~isequaln(obj.constants, recordings{1}.constants)
+                        error(['the recordings object you are trying to gather has different options structures or constants objects' newline...
+                            'The different recording we first encountered is ' recordings{i}.Name]);
+                    end
                     if ~isa(recordings{i}, 'recording')
                         error('"multi_recording" class inputs must be "recording" class objects!')
                     end
-                    obj.path        = cat(1, obj.path, recordings{i}.path);
-                    obj.Name        = cat(1, obj.Name, recordings{i}.Name);
-                    obj.markers     = cat(1, obj.markers, recordings{i}.markers);
-                    obj.segments    = cat(1, obj.segments, recordings{i}.segments);
-                    obj.labels      = cat(1, obj.labels, recordings{i}.labels);
-                    obj.supp_vec    = cat(2, obj.supp_vec, recordings{i}.supp_vec);
-                    obj.sample_time = cat(2, obj.sample_time, recordings{i}.sample_time);
-                    obj.raw_data    = cat(2, obj.raw_data, recordings{i}.raw_data);
-                    obj.features    = cat(1, obj.features, recordings{i}.features);
-                    obj.rec_idx     = cat(1, obj.rec_idx, [counter, counter + length(recordings{i}.labels) - 1]);
-                    counter = counter + length(recordings{i}.labels);
+                    obj.features             = cat(5, obj.features, recordings{i}.features);
+                    obj.segments             = cat(5, obj.segments, recordings{i}.segments);
+                    obj.supp_vec             = cat(2, obj.supp_vec, recordings{i}.supp_vec);
+                    obj.sample_time          = cat(2, obj.sample_time, recordings{i}.sample_time);
+                    obj.raw_data             = cat(2, obj.raw_data, recordings{i}.raw_data);
+                    obj.raw_data_filt        = cat(2, obj.raw_data_filt, recordings{i}.raw_data_filt);
+                    obj.path                 = cat(1, obj.path, recordings{i}.path);
+                    obj.Name                 = cat(1, obj.Name, recordings{i}.Name);
+                    obj.markers              = cat(1, obj.markers, recordings{i}.markers);
+                    obj.labels               = cat(1, obj.labels, recordings{i}.labels);
+                   
+                    seg_idx = counter_seg:counter_seg + length(recordings{i}.labels) - 1; % segments indices
+                    raw_idx = counter_raw: counter_raw + size(recordings{i}.raw_data, 2) - 1; % raw data indices
+                    filt_idx = counter_filt: counter_filt + size(recordings{i}.raw_data_filt, 2) - 1; % filtered data indices
+                    
+                    % place the recording name and indices inside a cell
+                    % array so we can track the data later
+                    obj.rec_idx = cat(1, obj.rec_idx, {recordings{i}.Name, seg_idx, raw_idx, filt_idx});
+                    % update counters
+                    counter_seg = counter_seg + length(recordings{i}.labels);
+                    counter_raw = counter_raw + size(recordings{i}.raw_data, 2);
+                    counter_filt = counter_filt + size(recordings{i}.raw_data_filt, 2);
                 end
-                [obj.supp_vec, obj.sample_time]   = fix_times(obj.supp_vec, obj.sample_time); % fix time points
-                obj.options = recordings{1}.options;
-                obj.constants = recordings{1}.constants;
-                obj.num_rec = length(obj.path);
-                for i = 1:length(recordings)
-                    obj.recordings{i} = copy(recordings{i}); % save copies and not pointers!
-                end
+                [obj.supp_vec, obj.sample_time] = fix_times(obj.supp_vec, obj.sample_time); % fix time points
+                obj.num_rec = length(recordings);
             end
         end
 
-        % create a data set from the obj segments and labels
-        function create_ds(obj) 
-            create_ds@recording(obj)
-            for i = 1:length(obj.recordings)
-                obj.recordings{i}.create_ds
-            end
-        end
-
-        % normalization of data store
-        function normalize_ds(obj)
-            normalize_ds@recording(obj)
-            for i = 1:length(obj.recordings)
-                obj.recordings{i}.normalize_ds
-            end
-        end
-
-        % predictions and evaluation
-        function [pred, thresh, CM] = evaluate(obj, model, options)
-            arguments
-                obj
-                model
-                options.thres_C1 = [];
-                options.CM_title = '';
-                options.criterion = [];
-                options.criterion_thresh = [];
-                options.print = true;
-            end
-            if ~isempty(obj.group) % give a proper title according to the group name
-                options.CM_title = [obj.group ' data'];
-            end
-            % evaluate for the multi_recording
-            [pred, thresh, CM] = evaluate@recording(obj, model, CM_title = options.CM_title, ...
-                    criterion = options.criterion, criterion_thresh = options.criterion_thresh, ...
-                    thres_C1 = options.thres_C1, print = options.print);
-            % evaluate for recordings with or without printing
-            for i = 1:length(obj.recordings)
-                if isa(obj.recordings{i}, 'multi_recording')
-                    options.print = true;
-                else
-                    options.print = false;
-                end
-                obj.recordings{i}.evaluate(model, CM_title = options.CM_title, ...
-                    criterion = options.criterion, criterion_thresh = options.criterion_thresh, ...
-                    thres_C1 = options.thres_C1, print = options.print);
-            end
-        end
-
-        % train test validation split ### need to add an option for cross
-        % recordings split ###
+        %% train test validation split
         function [train, test, val] = train_test_split(obj, args)
             arguments
                 obj
@@ -108,11 +73,7 @@ classdef multi_recording < handle & matlab.mixin.Copyable & recording
             split_rec_idx = randperm(obj.num_rec, obj.num_rec);
             % allocate indices for each set
             test_idx  = split_rec_idx(1:num_test);
-            if num_val > 0
-                val_idx   = split_rec_idx(num_test + 1:num_test + num_val);
-            else
-                val_idx = [];
-            end
+            val_idx   = split_rec_idx(num_test + 1:num_test + num_val);
             train_idx = split_rec_idx(num_test + num_val + 1:end);
             % create new objects
             train = multi_recording(obj.recordings(train_idx));

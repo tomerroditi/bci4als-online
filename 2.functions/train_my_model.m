@@ -1,8 +1,9 @@
 function [model, selected_feat_idx] = train_my_model(algo, constants, options)
-% this function trains a model and returns it
+% this function trains a model and select features if required
 %
 % Inputs:
 %   algo: the algorithm to create the model
+%   constants: a Constants object matching the recordings that are used
 %   options: a set of optional parameters
 %       - train\val_ds: a datastore for training\validation data
 %       - features: matrix containing the features
@@ -28,7 +29,7 @@ arguments
     options.save_path = '';
 end
 
-warning('off');
+warning('off'); % supress warnings print
 
 % train the desired model
 if strcmp(algo, 'EEGNet')
@@ -51,6 +52,8 @@ elseif strcmp(algo, 'EEGNet_bilstm_stft')
     model = EEGNet_bilstm_stft(options.train_ds, options.val_ds, constants);
 elseif strcmp(algo, 'EEGNet_gru_stft')
     model = EEGNet_gru_stft(options.train_ds, options.val_ds, constants);
+elseif strcmp(algo, 'alexnet')
+    model = alexnet(options.train_ds, options.val_ds, constants);
 else
     [selected_feat_idx]  = MI5_feature_selection(options.features, options.labels);
     options.features = options.features(:,selected_feat_idx);
