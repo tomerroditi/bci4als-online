@@ -36,10 +36,11 @@ classdef constants < handle
         wgn_p = 0       % white gaussian noise
     
         % training options
-        VerboseFrequency = 50;
-        MaxEpochs =  500;
+        VerboseFrequency = 100;
+        MaxEpochs =  30;
         MiniBatchSize = 150;
-        ValidationFrequency =  50;
+        ValidationFrequency =  100;
+        LearnRateDropPeriod = 25;
     
         % electrodes names and locations
         electrode_num = [1,2,3,4,5,6,7,8,9,10,11]; % electrode number
