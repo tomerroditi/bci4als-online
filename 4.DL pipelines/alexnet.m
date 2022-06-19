@@ -11,14 +11,19 @@ function alexnet = alexnet(train_ds, val_ds, constants)
 %   eegnet: the trained EEGNet model
 %
 
+% ##### the weights data is to heavy for git so it needs to be changed to
+% load the trained alexnet from matlab instead from local file #####
+
 % reset gpu to prevent limited gpu memory
-gpuDevice(1)
+disp('clearing gpu memory - this might take a while.. thank you for being patient')
+evalc('gpuDevice(1)');
+disp('gpu memory is cleared!')
 
 % extract the number of classes
 input_samples = readall(train_ds);
-data = cellfun(@(X) permute(X,[4 1 2 3]), input_samples(:,1), 'UniformOutput', false);
-data = permute(cell2mat(data), [2 3 4 1]);
-data_mean = mean(data, 4);
+% data = cellfun(@(X) permute(X,[4 1 2 3]), input_samples(:,1), 'UniformOutput', false);
+% data = permute(cell2mat(data), [2 3 4 1]);
+% data_mean = mean(data, 4);
 num_classes = length(unique(cellfun(@(X)double(X), input_samples(:,2))));
 
 % load parameters of pre trained network
@@ -26,7 +31,7 @@ params = load("C:\Users\tomer\Desktop\ALS\project\4.DL pipelines\params_2022_06_
 
 % construct the network with its initial parameters
 layers = [
-    imageInputLayer([227 227 3],"Name","data","Mean",data_mean)
+    imageInputLayer([227 227 3],"Name","data","Mean",params.data.Mean)
     convolution2dLayer([11 11],96,"Name","conv1","BiasLearnRateFactor",2,"Stride",[4 4],"Bias",params.conv1.Bias,"Weights",params.conv1.Weights, "WeightLearnRateFactor", 1)
     reluLayer("Name","relu1")
     crossChannelNormalizationLayer(5,"Name","norm1","K",1)
