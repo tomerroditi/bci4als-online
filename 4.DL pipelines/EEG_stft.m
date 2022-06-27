@@ -20,13 +20,12 @@ evalc('gpuDevice(1)');
 % extract the input dimentions for the input layer
 input_samples = readall(train_ds);
 input_size = size(input_samples{1,1});
-num_classes = length(unique(cellfun(@(X)double(X), input_samples(:,2))));
+num_classes = length(unique(constants.class_label));
 
-% shift the data dimentions to match the input layer of sequential/image input 
-% layer - hXwXcXn (height,width,channels,number of images)
-if length(input_size) < 3
-    input_size = [input_size, 1];
-end
+% correct the 'input_size' dimentions to match the input layer of image input 
+% layer - hXwXcXn (height,width,channels), since we always has 1 channel it
+% doesnt apear in 'input_size' and we have to manually add it
+input_size = [input_size, 1];
 
 % define the network layers
 layers_stft = [
