@@ -41,19 +41,16 @@ classdef recording < handle & matlab.mixin.Copyable
                     obj.raw_data = EEG.data;
                     obj.markers = EEG.event;
                     obj.raw_data(obj.constants.xdf_removed_chan,:) = []; % remove unused channels
-                    labels = load(strcat(file_path, '\labels.mat'), 'labels'); % load the labels vector
-                    labels = labels.labels;
                 elseif ~isempty(dir([file_path '\*.edf'])) 
                     obj.file_type = 'edf';
-                    [obj.raw_data, obj.markers, labels] = edf2data(file_path); % extract data from edf files
+                    [obj.raw_data, obj.markers] = edf2data(file_path); % extract data from edf files
                     obj.raw_data(obj.constants.edf_removed_chan,:) = []; % remove unused channels
                 else
                     error('Error. only {"xdf","edf"} file types are supported for loading data')
                 end
-                [segments, obj.labels, obj.supp_vec, obj.sample_time] = ...
-                    MI2_SegmentData(obj.raw_data, obj.markers, labels, options); % create segments
-                segments = MI3_Preprocess(segments, options.cont_or_disc, obj.constants); % filter the segments
-                obj.raw_data_filt = MI3_Preprocess(obj.raw_data, options.cont_or_disc, obj.constants); % filter raw data               
+                [segments, obj.labels, obj.supp_vec, obj.sample_time] = data_segmentation(obj.raw_data, obj.markers, options); % create segments
+                segments = filter_segments(segments, options.cont_or_disc, obj.constants); % filter the segments
+                obj.raw_data_filt = filter_segments(obj.raw_data, options.cont_or_disc, obj.constants); % filter raw data               
                 obj.segments = create_sequence(segments, options); % create sequences
             end
         end
@@ -249,79 +246,105 @@ classdef recording < handle & matlab.mixin.Copyable
         end
 
         %% gesture detection
-        function [CM, time_gest] = detect_gestures(obj, K, cool_time, print)
-        % K - the number of gesture detected in a raw to execute a gesture
-        % cool_time - time window to not execute a gesture after executing a gesture
-            
-        % create a vector of the gesture execution times and labels
-            time_gest = [0;0]; % initialize a vector for gesture class and time of execution
+        function gest_time = get_predicted_gestures(obj, K, cool_time, pred_GT)
+            % K - the number of labels detected in a raw to execute a gesture
+            % cool_time - time window to not execute a gesture after executing a gesture
+            % pred_GT - choose from predicted gestures, 'pred', and ground truth gestures, 'GT'.
+            if strcmp(pred_GT, 'pred')
+                vec = obj.predictions;
+            elseif strcmp(pred_GT, 'GT')
+                vec = obj.labels;
+            end
+
+            gest_time = [0;0]; % initialize a vector for gesture class and time of execution
             for i = K:length(obj.labels)
-                if obj.sample_time(i) - time_gest(2,end) < cool_time
+                if obj.sample_time(i) - gest_time(2,end) < cool_time
                     continue
                 end
-                if obj.predictions(i - K + 1:i) == 2
-                        time_gest(1,i) = 2;
-                        time_gest(2,i) = obj.sample_time(i);
-                elseif obj.predictions(i - K + 1:i) == 3
-                        time_gest(1,i) = 3;
-                        time_gest(2,i) = obj.sample_time(i);
+                [class_label, ~] = fix_class(obj.constants.class_label, obj.constants.class_names);
+                for j = 1:length(class_label)
+                    if vec(i - K + 1:i) == class_label(j)
+                        gest_time(:,i) = [class_label(j) ; obj.sample_time(i)];
+                        break
+                    end
+                end 
+            end
+            gest_time(:,gest_time(1,:) == 0) = []; % remove zeros
+        end
+
+        function [accuracy, missed_gest, mean_delay, CM, gest_times_pred] = detect_gestures(obj, K, cool_time, M_max, print)
+        % K - the number of gesture detected in a raw to execute a gesture
+        % cool_time - time window to not execute a gesture after executing a gesture
+        if isempty(obj.predictions)
+            accuracy = [];
+            missed_gest = [];
+            mean_delay = [];
+            CM = [];
+            gest_times_pred = [];
+            return
+        end
+            gest_times_pred = get_predicted_gestures(obj, K, cool_time, 'pred');
+            gest_times_GT = get_predicted_gestures(obj, K, cool_time, 'GT');
+            [class_label, class_name] = fix_class(obj.constants.class_label, obj.constants.class_names);
+            idle_idx = strcmp(class_name, 'Idle');
+            idle_label = class_label(idle_idx); % find the label of Idle class
+
+            % compare true gestures and predicted ones
+            delay = []; % initialize an empty array to calculate the mean delay of gesture detection
+            seg_dur = obj.options.seg_dur;   % segments duration
+            overlap = obj.options.overlap;   % segments overlap
+            threshold = obj.options.threshold; % segment threshold for labeling
+            step_size = seg_dur - overlap;     % step size between following segments
+            gest_times_GT(2,:) = gest_times_GT(2,:) - K*step_size - seg_dur*threshold; % place the true gesture times at roughtly the beggining of the gesture
+            GT_pred = []; % initialize an array to store the true and predicted gestures
+            for i = 1:length(gest_times_GT)
+                curr_time = gest_times_GT(2,i);
+                time_diff = gest_times_pred(2,:) - curr_time;
+                M = min(time_diff(time_diff >= 0));
+                if M < M_max % allow up to 7 second response delay from the start of the gesture execution
+                    delay = cat(1, delay, M); % save delay of gesture execution
+                    GT_pred = cat(2, GT_pred, [gest_times_GT(1,i) ; gest_times_pred(1, time_diff == M)]);
+                else
+                    GT_pred = cat(2, GT_pred, [gest_times_GT(1,i); idle_label]); % missed gesture
                 end
             end
-            time_gest(:,time_gest(1,:) == 0) = []; % remove zeros
-            % check if we execute the correct gestures and calculate the accuracy
-            seg_dur = obj.options.seg_dur; % duration of the segments
-            Fs = obj.constants.SAMPLE_RATE;
-            true_gesture = ones(1,length(time_gest));
-            thresh = 0.5;                            % ###### might need to change this #######
-            for i = 1:length(time_gest)
-                idx = find(obj.supp_vec(2,:) == time_gest(2,i));
-                time_points_labels = obj.supp_vec(1,idx - floor(Fs*seg_dur) + 1:idx);
-                if sum(time_points_labels == 2) > thresh
-                    true_gesture(i) = 2;
-                elseif sum(time_points_labels == 3) > thresh
-                    true_gesture(i) = 3;
+
+            % find predicted gestures when nothing realy happened - false positive
+            for i = 1:length(gest_times_pred)
+                curr_time = gest_times_pred(2,i);
+                time_diff = curr_time - gest_times_GT(2,:);
+                M = min(time_diff(time_diff >= 0));
+                if M > M_max % allow up to 7 second response delay from the start of the gesture execution
+                    GT_pred = cat(2, GT_pred, [1 ; gest_times_pred(1,i)]);
                 end
             end
-            % check for missed gestures
-            gesture_changes = obj.supp_vec(1, 2:end) - obj.supp_vec(1, 1:end-1);
-            gest_2_idx = find(gesture_changes == 1) + 1;
-            gest_3_idx = find(gesture_changes == 2) + 1;
-            true_gest_times_2 = obj.supp_vec(2, gest_2_idx);
-            true_gest_times_3 = obj.supp_vec(2, gest_3_idx);
-            missed_gest = 0;
-            % missed class 2
-            for i = 1:length(true_gest_times_2)
-                time_diff_2 = time_gest(2,:) - true_gest_times_2(i);
-                if min(time_diff_2(time_diff_2 > 0)) > 5     % i chose 5 cause our protocol is 5 second gestures
-                    missed_gest = missed_gest + 1;
-                    time_gest = cat(2, time_gest, [1;true_gest_times_2(i)]);
-                    true_gesture(end + 1) = 2;
-                end
+
+            % calculate the accuracy misse rate and mean delay
+            mean_delay = mean(delay);
+            CM = confusionmat(GT_pred(1,:), GT_pred(2,:)); % confusion matrix
+            % differ between cases where we have or dont have class idle 
+            if ismember(idle_label, GT_pred)
+                accuracy =  sum(diag(CM(~idle_idx, ~idle_idx)))/sum(sum(CM(:,~idle_idx))); 
+                missed_gest = sum(CM(:,idle_idx))/sum(sum(CM(~idle_idx,:)));
+            elseif length(unique(GT_pred)) >= 2
+                accuracy =  sum(diag(CM))/sum(sum(CM)); 
+                missed_gest = 0;
+            else % this is not supposed to happen unless you segmented and labeled the data in a very poorly way
+                accuracy = 0;
+                missed_gest = 1;
             end
-            % missed class 3
-            for i = 1:length(true_gest_times_3)
-                time_diff_3 = time_gest(2,:) - true_gest_times_3(i);
-                if min(time_diff_3(time_diff_3 > 0)) > 5     % i chose 5 cause our protocol is 5 second gestures
-                    missed_gest = missed_gest + 1;
-                    time_gest = cat(2, time_gest, [1;true_gest_times_3(i)]);
-                    true_gesture(end + 1) = 3;
-                end
-            end
-            % calculate the accuracy and CM
-            CM = confusionmat(true_gesture,time_gest(1,:));
-            accuracy = sum(diag(CM))/sum(sum(CM));
+            
 
             % plot the gestures 
-            if print
-                disp(['model accuracy is: ' num2str(accuracy)]);
-                
+            if print                
                 figure('Name', 'gesture execution moments')
                 plot(obj.supp_vec(2,:), obj.supp_vec(1,:), 'r*', 'MarkerSize', 1); hold on;
-                plot(time_gest(2,:), time_gest(1,:), 'bs', 'MarkerSize', 2);
-                xlabel('time [s]'); ylabel('class'); title('gesture execution moments');
-    
+                plot(gest_times_pred(2,:), gest_times_pred(1,:), 'bs', 'MarkerSize', 5);
+                xlabel('time [s]'); ylabel('class'); 
+                title(['model accuracy is: ' num2str(accuracy) ' with a miss rate of: ' num2str(missed_gest) ', and a mean delay of:' num2str(mean_delay)]);
+                legend({'true gestures', 'predicted executed gesture'})
                 figure('Name', 'geasture detection CM')
-                confusionchart(CM);
+                confusionchart(CM, class_name);
             end
         end
     end

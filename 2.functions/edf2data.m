@@ -1,4 +1,4 @@
-function [data, markers, labels] = edf2data(path)
+function [data, markers] = edf2data(path)
 % this function reads an edf file from the given path and return the data
 % and markers it stores.
 %
@@ -48,10 +48,6 @@ for i = 1:length(latency)
     markers(i).latency = latency(i);
     markers(i).duration = duration(i);
 end
-
-% construct the labels vector
-labels = types(ismember(types, {'2.000000000000000', '1.000000000000000'}),:);
-labels = str2num(labels);
 
 end
 

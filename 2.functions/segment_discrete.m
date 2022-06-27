@@ -6,9 +6,9 @@ marker_times = cell2mat(events(:,2));
 marker_sign = events(:,1);
 
 % define segmentation parameters
-buff_start = constants.BUFFER_START;  % buffer befor the segment
-buff_end = constants.BUFFER_END;      % buffer after the segment
-Fs = constants.SAMPLE_RATE;           % sample rate
+buff_start = constants.buffer_start;  % buffer befor the segment
+buff_end = constants.buffer_end;      % buffer after the segment
+Fs = constants.sample_rate;           % sample rate
 seg_post_start = floor(post_start*Fs);% number of time points afetr start marker
 seg_pre_start = floor(pre_start*Fs);       % number of time points before start marker
 
@@ -42,7 +42,7 @@ labels = str2double(marker_sign(strcmp(marker_sign, '3.000000000000000') | ...
 % filter the data to remove drifts and biases, so we could set a common
 % threshold to all recordings for finding corapted segments. we add zeros
 % to keep both signals align with each other (the segments are not filtered!)
-filtered_data = cat(2,zeros(size(data,1), constants.BUFFER_START), MI3_Preprocess(data, 'discrete', constants));
+filtered_data = cat(2,zeros(size(data,1), buff_start), MI3_Preprocess(data, 'discrete', constants));
 start_times_indices = marker_times(strcmp(marker_sign, '1111.000000000000'));
 segments = [];
 for i = 1:length(start_times_indices)

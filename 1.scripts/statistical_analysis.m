@@ -1,5 +1,6 @@
 % this script is for statistical analysis of the raw data - this helped me
-% to make a good and correct normalizations across all recordings
+% make a good and correct normalizations across all recordings and also
+% determined if a recording is good enought to use it or reject it.
 
 
 clc; clear all; close all; %#ok<CLALL> 
@@ -27,9 +28,9 @@ options.sequence_overlap = 1;            % duration in seconds of overlap betwee
 options.threshold        = 0.7;          % threshold for labeling - percentage of the segment containing the class (only values from 0-1 range)
 
 %% select folders to aggregate data from
-recorders = {'tomer', 'omri', 'nitay','02','03','04','05','06','07','08','09','10','12'}; % people we got their recordings
-% folders_num = {[], [], [], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5]}; % recordings numbers - make sure that they exist
-folders_num = {[1, 3:6, 8:13, 15], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers - make sure that they exist
+recorders = {'tomer', 'omri', 'nitay', 'itay','02','03','04','05','06','07','08','09','10','12'}; % people we got their recordings
+% folders_num = {[], [], [], [], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5]}; % recordings numbers - make sure that they exist
+folders_num = {[], [6, 9, 10], [], [1:2], [], [], [], [], [], [], [], [], [], []}; % recordings numbers - make sure that they exist
 data_paths = create_paths(recorders, folders_num);
 
 all_rec = paths2Mrec(data_paths, options); % create a class member from all paths

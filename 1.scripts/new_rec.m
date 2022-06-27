@@ -12,7 +12,7 @@
 script_setup()
 
 % call the simulation function
-MI1_Training();
+record_me();
 disp('Finished simulation and EEG recording. pls Stop the LabRecorder!');
 
 

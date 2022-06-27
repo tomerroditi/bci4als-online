@@ -18,8 +18,10 @@ end
 if size(labels,1) == 1
     labels = labels.'; % adjust labels dimentions if needed
 end
-labels = mat2cell(categorical(labels), ones(1,length(labels))); % create a cell array of labels
+labels_catg = mat2cell(categorical(labels), ones(1,length(labels))); % create a cell array of labels
 
+% reducing redundant dimentions of segments in case we are not ussing
+% sequence model
 seg_size = size(segments);
 if seg_size(4) == 1 
     segments = permute(segments, [1 2 3 5 4]); % remove dimention 4 if there is no sequence!
@@ -31,6 +33,6 @@ end
 
 % define the datastores and their read size - for best runtime performance 
 % configure read size to be the same as the minibatch size of the network
-read_size = constants.MiniBatchSize;
-ds = arrayDatastore([segments labels], 'ReadSize', read_size, 'IterationDimension', 1, 'OutputType', 'same');
+read_size = constants.mini_batch_size;
+ds = arrayDatastore([segments labels_catg], 'ReadSize', read_size, 'IterationDimension', 1, 'OutputType', 'same');
 end

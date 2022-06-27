@@ -63,8 +63,8 @@ classdef multi_recording < handle & matlab.mixin.Copyable & recording
         function [train, test, val] = train_test_split(obj, args)
             arguments
                 obj
-                args.test_ratio = obj.options.test_split_ratio;
-                args.val_ratio = obj.options.val_split_ratio
+                args.test_ratio = 0;
+                args.val_ratio = 0;
             end
             % calculate the number of recordings for each set
             num_test = round(obj.num_rec*args.test_ratio);

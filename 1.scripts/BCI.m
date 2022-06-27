@@ -1,6 +1,4 @@
 clc; clear all; close all;
-%%%%%% need to fix the time delays between each classification iteration %%%%%%
-
 % a quick paths check and setup (if required) for the script
 script_setup()
 
@@ -10,18 +8,19 @@ options = mdl_struct.options;
 model = mdl_struct.model;
 constants = options.constants;
 
-% define some constants
-remove_elec = constants.PREPROCESS_BAD_ELECTRODES;
-start_buff = constants.BUFFER_START;
-end_buff = constants.BUFFER_END;
-Fs = constants.SAMPLE_RATE;
-idle_label = constants.IDLE_LABEL;
-left_label = constants.LEFT_LABEL;
-right_label = constants.RIGHT_LABEL;
+% extract some parameters
+start_buff = constants.buffer_start; end_buff = constants.buffer_end; % buffers
+Fs = constants.sample_rate;
+sequence_overlap = options.sequence_overlap; % overlap between sequences
 seg_dur = options.seg_dur;           % segments duration in seconds
 overlap = options.overlap;           % following segments overlapping duration in seconds
 sequence_len = options.sequence_len; % length of a sequence to enter in sequence DL models
 step_size = seg_dur - overlap;
+seq_step_size = seg_dur - sequence_overlap;
+
+constants.cool_time = 5;
+constants.raw_pred_action = 5;
+constants.model_thresh = 0.25;
 
 %% Lab Streaming Layer Init
 lib = lsl_loadlib();
@@ -33,54 +32,13 @@ end
 inlet = lsl_inlet(result{1});
 inlet.open_stream()
 
-%% extract data from stream, preprocess and classify
-data = [];
-predictions = ones(1,5);
-data_size = floor(seg_dur*Fs + step_size*Fs*(sequence_len - 1) + start_buff + end_buff);
-segment_size = floor(seg_dur*Fs + start_buff + end_buff);
-while true
-    tic;
-    chunk = inlet.pull_chunk();
-    chunk(remove_elec,:) = [];
-    data = [data, chunk];
-    if size(data,2) < data_size
-        pause(0.1)
-        continue
-    end
-    data = data(:,end - data_size + 1:end);
-
-    % segment the data   
-    start_idx = 1;
-    for i = 1:sequence_len
-        % create the ith segment
-        seg_idx = (start_idx : start_idx + segment_size - 1); % data indices to segment
-        segments(i,:,:) = data(:,seg_idx); % enter the current segment into segments
-        start_idx = start_idx + floor(step_size*Fs); % add step size to the starting index
-    end
-
-    % filter the data
-    filt_segments = Preprocess_block(segments, constants);
-
-    % reorder dimentions to match the sequence input shape
-    sequence = permute(filt_segments,[2,3,4,1]);
-
-    % predict - using the last 5 predictions to prevent false positives
-    predictions(1) = [];
-    curr_prediction = classify(model, sequence);
-    predictions(5) = double(curr_prediction);
-    disp(predictions);
-    if sum(predictions == 2) >= 2 || sum(predictions == 3) >= 2
-        disp(predictions(end));
-        predictions = ones(1,5);
-        pause(3);
-        continue
-    else
-        disp(predictions)
-    end
-    time = toc;
-    pause(step_size - time); % pause till next iteration begins
-    toc
-end
+%% extract data from stream, preprocess, classify and execute actions
+data_size = floor(seg_dur*Fs + seq_step_size*Fs*(sequence_len - 1) + start_buff + end_buff);
+% set a timer object
+disp(['starting bci in ' num2str(data_size/Fs) ' seconds'])
+t = timer('TimerFcn',"my_bci(inlet, model, options, constants, data_size)", "StartDelay", data_size/Fs + 1, 'Period', step_size,... 
+    'ExecutionMode', 'fixedRate', 'TasksToExecute', 1000, 'BusyMode', 'drop');
+start(t);
 
 
 

@@ -72,7 +72,7 @@ netD = dlnetwork(layers_decoder);
 % start by defining some parameters
 num_epochs = 400;
 val_epoch_freq = 10;
-mini_batch_size = constants.MiniBatchSize;
+mini_batch_size = constants.mini_batch_size;
 learn_rate = 1e-3;
 trailingAvgE = []; trailingAvgSqE = []; trailingAvgD = []; trailingAvgSqD = []; % adam solver parameters
 

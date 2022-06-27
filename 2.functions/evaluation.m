@@ -41,36 +41,38 @@ class_true = cellfun(@double ,data_set(:,2), 'UniformOutput', true);
 
 % predict using the model
 scores = predict(model, data_store);
-if size(scores,2) < 3 % if we only have 2 classes then add another column of zeros
-    scores = cat(2, scores, zeros(size(scores,1)));
-end
+class_name = constants.class_name_model;  % the classes we are ussing to train the model
+class_label = constants.class_label; % the label we gave to each class
+[class_label, class_name] = fix_class(class_label, class_name);
+
+% find idle location
+idle_idx = strcmp(class_name, 'Idle');
+
 
 if ~isempty(options.criterion) && ~isempty(options.criterion_thresh) % predict with criterion
     % get the criterion you desire 
-    [crit_values,~,thresholds] = perfcurve(class_true, scores(:,1), 1, 'XCrit', options.criterion);
+    [crit_values,~,thresholds] = perfcurve(class_true, scores(:,idle_idx), 1, 'XCrit', options.criterion);
 
-    % set a working point for class 1 (Idle)
+    % set a working point for class Idle
     [~,I] = min(abs(crit_values - options.criterion_thresh));
     thresh = thresholds(I); % the working point
 
     % label the samples according to the criterion threshold
-    class_pred = zeros(size(class_true)); % set an empty labels vector
-    class_pred(scores(:,2) >= scores(:,3)) = 2;
-    class_pred(scores(:,2) < scores(:,3)) = 3;
-    class_pred(scores(:,1) >= thresh) = 1;
+    [~, class_pred_idx] = max(scores(:,~idle_idx), [], 2);
+    class_pred = class_label(class_pred_idx);
+    class_pred(scores(:,idle_idx) >= thresh) = class_label(idle_idx);
 
     title = [' confusion matrix - ' options.criterion ' = '  num2str(options.criterion_thresh)];
-elseif ~isempty(options.thres_C1) % predict with threshold for class 1
+elseif ~isempty(options.thres_C1) % predict with threshold for Idle class
     % label the samples according to the threshold
-    class_pred = zeros(size(class_true)); % set an empty labels vector
-    class_pred(scores(:,2) >= scores(:,3)) = 2;
-    class_pred(scores(:,2) < scores(:,3)) = 3;
-    class_pred(scores(:,1) >= options.thres_C1) = 1;
-
-    title = [' confusion matrix - class 1 threshold = '  num2str(options.thres_C1)];
+    [~, class_pred_idx] = max(scores(:,~idle_idx), [], 2);
+    class_pred = class_label(class_pred_idx);
+    class_pred(scores(:,idle_idx) >= options.thres_C1) = class_label(idle_idx);
+    title = [' confusion matrix - Idle threshold = '  num2str(options.thres_C1)];
     thresh = [];
 else % deafult prediction
-    [~, class_pred] = max(scores, [],2);
+    [~, class_pred_idx] = max(scores, [], 2);
+    class_pred = class_label(class_pred_idx);
     title = ' confusion matrix';
     thresh = [];
 end
@@ -80,7 +82,7 @@ accuracy = sum(class_true == class_pred)/length(class_true);
 % plot the confusion matrix
 if options.print
     figure('Name', [options.CM_title title]);
-    confusionchart(CM);
+    confusionchart(CM, class_name);
     disp([options.CM_title ' accuracy is: ' num2str(accuracy)]);
 end
 
