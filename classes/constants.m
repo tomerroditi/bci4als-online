@@ -3,49 +3,49 @@ classdef constants < handle
     properties (Constant)
         % classes - general, this has to stay conctant! do not change the
         % existing values, if you want you can add new values!
-        class_names   = {'Idle', 'Left hand', 'Right hand'}; 
-        class_marker  = [1;2;3];
+        class_names       = {'Idle', 'Left hand', 'Right hand'}; 
+        class_marker      = [1;2;3];
 
         % classes - training model\recording data, 'class_label' and
         % 'class_name_model' must corespond to each other, meaning the
         % first name matching the first label and so on
-        class_label   = [1;2;3];  % the label to use for each class when labeling segments to train a model (DO NOT use -1\0 as a label)
-        class_name_model = {'Idle', 'Left hand', 'Right hand'}; % choose the class names to use when loading recordings
-        class_name_rec = {'Idle', 'Left hand', 'Right hand'};   % choose the class names to use when recording new data
+        class_label       = [1;2;3];  % the label to use for each class when labeling segments to train a model (DO NOT use -1\0 as a label)
+        class_name_model  = {'Idle', 'Left hand', 'Right hand'}; % choose the class names to use when loading recordings
+        class_name_rec    = {'Idle', 'Left hand', 'Right hand'};   % choose the class names to use when recording new data
 
-        % hardware
-        sample_rate   = 125;
+        % hardware 
+        sample_rate       = 125;
         
         % buffers size for segmentations (removed after filtering)
-        buffer_start  = 2500; % number of samples before segment starts
-        buffer_end    = 0;    % number of samples after segment ends 
+        buffer_start      = 2500; % number of samples before segment starts
+        buffer_end        = 0;    % number of samples after segment ends 
         
         % recordings setup
-        num_trials    = 10; % num of trials per class
-        trial_length  = 5;  % duration of each class mark
-        start_trail = 1111;     % start trial marker - DO NOT CHANGE!!!
-        start_recordings = 111; % start recording marker - DO NOT CHANGE!!!
-        end_recording = 99;     % end recording marker - DO NOT CHANGE!!!
-        end_trail = 9;          % end trial marker - DO NOT CHANGE!!!
-
+        num_trials        = 10; % num of trials per class
+        trial_length      = 5;  % duration of each class mark
+        start_trail       = 1111;     % start trial marker - DO NOT CHANGE!!!
+        start_recordings  = 111; % start recording marker - DO NOT CHANGE!!!
+        end_recording     = 99;     % end recording marker - DO NOT CHANGE!!!
+        end_trail         = 9;          % end trial marker - DO NOT CHANGE!!!
+  
         % filters parameters
-        high_freq     = 38;      % BP high cutoff frequency in HZ
-        high_width    = 3;       % the width of the transition band for the high freq cutoff
-        low_freq      = 4;       % BP low cutoff frequency in HZ
-        low_width     = 3;       % the width of the transition band for the low freq cutoff
-        notch         = [50, 32.5, 25];      % frequency to implement notch filter
-        notch_width   = 0.5;     % the width of the notch filter
+        high_freq         = 38;      % BP high cutoff frequency in HZ
+        high_width        = 3;       % the width of the transition band for the high freq cutoff
+        low_freq          = 4;       % BP low cutoff frequency in HZ
+        low_width         = 3;       % the width of the transition band for the low freq cutoff
+        notch             = [50, 31.25, 25];      % frequency to implement notch filter
+        notch_width       = 0.5;     % the width of the notch filter
 
         % normalization parameters
-        quantiles   = [0.05 0.95]; % quantiles of data to normalize by 
+        quantiles         = [0.05 0.95]; % quantiles of data to normalize by 
     
         % preprocessing settings and options
-        xdf_removed_chan = [12,13,14,15,16];  % electrodes to remove
-        edf_removed_chan = []
+        xdf_removed_chan  = [12,13,14,15,16];  % electrodes to remove
+        edf_removed_chan  = []
 
         % augmentation probabilities
-        x_flip_p = 0;   % Xflip
-        wgn_p    = 0    % white gaussian noise
+        x_flip_p          = 0;   % Xflip
+        wgn_p             = 0.3;    % white gaussian noise
     
         % electrodes names and locations
         electrode_num     = [1,2,3,4,5,6,7,8,9,10,11]; % electrode number
@@ -57,10 +57,10 @@ classdef constants < handle
     properties (GetAccess = public, SetAccess = protected)
         % training options
         verbose_freq           = 100;
-        max_epochs             = 50;
-        mini_batch_size        = 150;
+        max_epochs             = 60;
+        mini_batch_size        = 300;
         validation_freq        = 100;
-        learn_rate_drop_period = 45;
+        learn_rate_drop_period = 50;
 
         % paths
         eeglab_path

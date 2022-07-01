@@ -1,4 +1,4 @@
-function [segments, labels] = resample_data(segments, labels, rsmpl_size, display)
+function [segments, labels] = resample_data(segments, labels, print)
 % this function resamples each class by the factors in rsmpl_size. each
 % class resample factor is stored in rsmpl_size in the index which is
 % equall to the class number.
@@ -20,29 +20,35 @@ if isempty(segments)
     segments = [];
     labels = [];
     return
-elseif rsmpl_size == [0 0 0]
-    return
 end
 
-% find each class indices
-class_1 = segments(:,:,:,:,labels == 1);
-class_2 = segments(:,:,:,:,labels == 2);
-class_3 = segments(:,:,:,:,labels == 3);
+% find the label that apears the most
+unique_labels = unique(labels);
+most_freq_label = [];
+count = 0;
+for i = 1:length(unique_labels)
+    if sum(labels == unique_labels(i)) > count
+        most_freq_label = unique_labels(i);
+        count = sum(labels == unique_labels(i));
+    end
+end
 
-% resample the data - only in the 5th dimention
-class_1_resampled = repmat(class_1, 1, 1, 1, 1, rsmpl_size(1));
-class_2_resampled = repmat(class_2, 1, 1, 1, 1, rsmpl_size(2));
-class_3_resampled = repmat(class_3, 1, 1, 1, 1, rsmpl_size(3));
+% find each class indices and resample the data - only in the 5th dimention
+rsmpl_segments = [];
+rsmpl_labels = [];
+for i = 1:length(unique_labels)
+    curr_label = unique_labels(i);
+    curr_seg = segments(:,:,:,:,labels == curr_label);
+    ratio = round(sum(labels == most_freq_label)/sum(labels == curr_label)); % ratio to the largest label
+    rsmpl_segments = cat(5, rsmpl_segments, repmat(curr_seg, 1, 1, 1, 1, ratio - 1));
+    rsmpl_labels = cat(1, rsmpl_labels, ones(size(curr_seg,5)*(ratio - 1),1).*curr_label);
+end
 
-% create the labels for each resampled class
-labels_1 = ones(size(class_1_resampled,5),1);
-labels_2 = ones(size(class_2_resampled,5),1).*2;
-labels_3 = ones(size(class_3_resampled,5),1).*3;
 
-segments = cat(5,segments, class_1_resampled, class_2_resampled, class_3_resampled);
-labels = [labels; labels_1; labels_2; labels_3];
+segments = cat(5, segments, rsmpl_segments);
+labels = cat(1, labels, rsmpl_labels);
 
-if display
+if print
     disp('new data distribution');
     tabulate(labels);
 end

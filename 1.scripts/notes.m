@@ -4,22 +4,12 @@
 %   for when we have too much data to handle at once...
 
 % small tasks:
-% - fix the fc activation visualization
-% - verify the location of the electrodes in the plot weights function (very important!)
-% - add the mean of the train set in the input layer of EEGNet
-% - build a transfer learning script to check the possibility of using
-%   EEGNet as cross subject model
-% - add a function to evaluate the signal quality when using the bci script
-%   or recording new data (inform if something is wrong)
-% - prepare a script for online model evaluation
-% - insert model threshold as a field in the model structure we save and
-%   load it when using the BCI script
-% - change the resample method to calculate automaticly the resample
-%   factors
-% - remove MI6 and add the model learning scripts and add them into
-%   'train_my_model'
-% - fix the labeling and sup_vec creation in discrete segmentation
-
+% 4) add a function to evaluate the signal quality when using the bci script
+%    or recording new data (inform if something is wrong)
+% 5) prepare a script for online model evaluation
+% 8) fix the fc activation visualization (not urgent) 
+% 9) remove MI6 and add the model learning scripts and add them into
+%    'train_my_model' (not urgent)
 
 
 %% general notes

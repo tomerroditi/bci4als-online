@@ -1,4 +1,4 @@
-function [recordingFolder, testNum] = record_me()
+function  record_me(args)
 %% MOTOR IMAGERY Training
 % This code creates a training paradigm with (#) numTargets on screen for
 % (#) numTrials. Before each trial, one of the targets is cued (and remains
@@ -12,32 +12,24 @@ function [recordingFolder, testNum] = record_me()
 % lab recorder should create an XDF file(EEG.xdf) that should be paired with
 % the training vector.
 
-%% Make sure you have Psychtoolbox & Lab Streaming Layer installed.
-% Set parameters (these will need to change according to your system):
-constant = constants();
-
-% prompt to enter subject ID or name
-testNum = input('Please enter test number: ');
-rootFolder = [constant.root_path '\3.recordings\new recordings'];
-% Define recording folder location and create the folder
-recordingFolder = strcat(rootFolder, '\Test', num2str(testNum), '\');
-if ~exist(recordingFolder, 'dir') % create the folder if its not exist
-    mkdir(recordingFolder);
+arguments
+    args.constants = constants();
 end
+constant = args.constants;
+
 % set parameters
-trialLength = constant.trial_length;   % each trial length in seconds 
-cueLength = 0.5;                       % cue length in seconds
-readyLength = 1.5;                     % ready length in seconds
-nextLength = 0.5;                      % next length in seconds
-numTrials = constant.num_trials; % number of trials per class
-numTargets = constant.num_classes;       % number of targets (classes)
+trial_len = constant.trial_length;   % each trial length in seconds 
+cue_len = 0.5;                       % cue length in seconds
+ready_len = 1;                     % ready length in seconds
+next_len = 1;                      % next length in seconds
+num_trials = constant.num_trials; % number of trials per class
 start_recordings = constant.start_recordings;                 % start recording marker
 end_recording = constant.end_recording;                      % end recording marker
 start_trail = constant.start_trail;                      % start trial marker
 end_trail = constant.end_trail;                       % end trial marker
-Idle = constant.class_marker(strcmp('Idle',constant.class_names)); % idle class marker
-Left = constant.class_marker(strcmp('Left',constant.class_names)); % left class number
-Right = constant.class_marker(strcmp('Right',constant.class_names)); % right class number
+classes_all = constant.class_names;
+classes_rec = constant.class_name_rec;
+labels = constant.class_marker;
 
 %% Lab Streaming Layer Init
 % load the LSL library
@@ -51,57 +43,45 @@ outletStream = lsl_outlet(info);        % create an outlet stream using the para
 disp('Open Lab Recorder & check for MarkerStream and EEG stream, start recording, return here and hit any key to continue.');
 pause;                                  % Wait for experimenter to press a key
 
-%% Prepare frequencies and binary sequences
-% prepare set of training trials (IMPORTANT FOR LATER MODEL TRAINING)
-labels = (1:numTargets);
-labels = repmat(labels, 1, numTrials);
-labels = labels(randperm(length(labels)));
-
-save(strcat(recordingFolder,'labels.mat'), 'labels');
+%% Prepare labels to execute in each stimulation
+labels = labels(ismember(classes_all, classes_rec)); % use only the classes intended to record
+labels = repmat(labels, 1, num_trials); % duplicate labels according to number of trials
+labels = labels(randperm(length(labels))); % randomize labels order
 
 %% Record Training Stage
 [window, white] = PsychInit(); % Psychtoolbox Screen Params Init
 outletStream.push_sample(start_recordings); % start of recording
+pause(60); % pause for 60 seconds to create reference for the rest of the recording
 num_trials = length(labels);
 for trial = 1:num_trials
+    pause_time = 4 + 2.*rand(1); % random float between 4 to 6 
+    pause(pause_time); % create uneven time distributed events
     
-    currentTrial = labels(trial); % What condition is it?
-    
-    if currentTrial == Idle       % idle target
-        
-        myimgfile = 'square.jpeg';
-        
-    elseif currentTrial == Left   % left target
-        
-        myimgfile = 'arrow_left.jpeg';
-        
-    elseif currentTrial == Right  % right target
-        
-        myimgfile = 'arrow_right.jpeg';
-    end
+    current_trial = labels(trial); % What condition is it?
+    img_file = ['images\' num2str(labels(trial)) '.jpeg'];
 
     % display "next"
     DrawFormattedText(window, 'Next', 'center','center', white); % place text in center of screen
     Screen('Flip', window);
-    pause(nextLength);               % "Next" stays on screen
+    pause(next_len);               % "Next" stays on screen
 
     % display the image related to the current class for a brief time
-    ima = imread(myimgfile, 'jpeg');
+    ima = imread(img_file, 'jpeg');
     Screen('PutImage', window, ima);  % put image on screen
     Screen('Flip', window);           % now visible on screen
-    pause(cueLength);
+    pause(cue_len);
 
     % display "Ready"
     DrawFormattedText(window, 'Ready', 'center', 'center', white); % place text in center of screen
     Screen('Flip', window);
-    pause(readyLength);                         % "Ready" stays on screen
+    pause(ready_len);                         % "Ready" stays on screen
     
     % display the image related to the current class
     Screen('PutImage', window, ima);         % put image on screen
     Screen('Flip', window);                  % now visible on screen
     outletStream.push_sample(start_trail);    % new trial marker
-    outletStream.push_sample(currentTrial);  % the class of the trial marker
-    pause(trialLength);                      % target stays on screen
+    outletStream.push_sample(current_trial);  % the class of the trial marker
+    pause(trial_len);                      % target stays on screen
     outletStream.push_sample(end_trail);      % end trial marker
 end
 %% End of recording session
@@ -110,4 +90,5 @@ ShowCursor;
 sca;
 Priority(0);
 disp('Stop the LabRecorder recording!');
+end
 

@@ -89,27 +89,31 @@ classdef recording < handle & matlab.mixin.Copyable
             end
         end
        
-        %% create a new obj with resampled segments
+        %% resampling segments
         function new_obj = rsmpl_data(obj, args)
             arguments
                 obj
-                args.resample = obj.options.resample
+                args.print = true;
             end
             new_obj = copy(obj);
-            [new_obj.segments, new_obj.labels] = resample_data(new_obj.segments, new_obj.labels, args.resample, true);
+            [new_obj.segments, new_obj.labels] = resample_data(new_obj.segments, new_obj.labels, args.print);
         end
             
         %% create a data store (DS) from the obj segments and labels
-        function create_ds(obj) 
+        function create_ds(obj, args)
+            arguments
+                obj
+                args.reject_class = {}
+            end
             if isempty(obj.raw_data)
                 return
             end
             
             feat_data = obj.options.feat_or_data;
             if strcmp(feat_data, 'data') % use processed data to create ds
-                obj.data_store = set2ds(obj.segments, obj.labels, obj.constants);
+                obj.data_store = set2ds(obj.segments, obj.labels, obj.constants, args.reject_class);
             elseif strcmp(feat_data, 'feat') % use features to create ds
-                obj.data_store = set2ds(obj.features, obj.labels, obj.constants);
+                obj.data_store = set2ds(obj.features, obj.labels, obj.constants, args.reject_class);
             end
         end
    
@@ -119,6 +123,26 @@ classdef recording < handle & matlab.mixin.Copyable
             if ~isempty(obj.data_store)
                 new_obj.data_store = transform(obj.data_store, @augment_data);
             end
+        end
+
+        %% complete data preprocessing pipeline
+        function rsmpld_obj = complete_pipeline(obj, args)
+            arguments
+                obj
+                args.rsmpl = false; % boolian values to resample or not
+                args.reject_class = {};  % class to reject from data store
+                args.print = false;
+            end
+            rsmpld_obj = [];
+            obj.normalize('all');
+            obj.extract_feat()
+            if args.rsmpl
+                rsmpld_obj = obj.rsmpl_data(print = args.print);
+                rsmpld_obj.create_ds(reject_class = args.reject_class)
+                rsmpld_obj = rsmpld_obj.augment();
+                
+            end
+            obj.create_ds(reject_class = args.reject_class)
         end
 
         %% evaluation & classification 
@@ -261,10 +285,12 @@ classdef recording < handle & matlab.mixin.Copyable
                 if obj.sample_time(i) - gest_time(2,end) < cool_time
                     continue
                 end
-                [class_label, ~] = fix_class(obj.constants.class_label, obj.constants.class_names);
-                for j = 1:length(class_label)
-                    if vec(i - K + 1:i) == class_label(j)
-                        gest_time(:,i) = [class_label(j) ; obj.sample_time(i)];
+                [class_label, class_names] = fix_class(obj.constants.class_label, obj.constants.class_names);
+                idle_idx = strcmp(class_names, 'Idle');
+                class_label_no_idle = class_label(~idle_idx);
+                for j = 1:length(class_label_no_idle)
+                    if vec(i - K + 1:i) == class_label_no_idle(j)
+                        gest_time(:,i) = [class_label_no_idle(j) ; obj.sample_time(i)];
                         break
                     end
                 end 
@@ -275,6 +301,7 @@ classdef recording < handle & matlab.mixin.Copyable
         function [accuracy, missed_gest, mean_delay, CM, gest_times_pred] = detect_gestures(obj, K, cool_time, M_max, print)
         % K - the number of gesture detected in a raw to execute a gesture
         % cool_time - time window to not execute a gesture after executing a gesture
+        % M_max - maximum delay (in seconds) between gesture start time and gesture recognition
         if isempty(obj.predictions)
             accuracy = [];
             missed_gest = [];
@@ -297,7 +324,7 @@ classdef recording < handle & matlab.mixin.Copyable
             step_size = seg_dur - overlap;     % step size between following segments
             gest_times_GT(2,:) = gest_times_GT(2,:) - K*step_size - seg_dur*threshold; % place the true gesture times at roughtly the beggining of the gesture
             GT_pred = []; % initialize an array to store the true and predicted gestures
-            for i = 1:length(gest_times_GT)
+            for i = 1:size(gest_times_GT, 2)
                 curr_time = gest_times_GT(2,i);
                 time_diff = gest_times_pred(2,:) - curr_time;
                 M = min(time_diff(time_diff >= 0));
@@ -310,7 +337,7 @@ classdef recording < handle & matlab.mixin.Copyable
             end
 
             % find predicted gestures when nothing realy happened - false positive
-            for i = 1:length(gest_times_pred)
+            for i = 1:size(gest_times_pred, 2)
                 curr_time = gest_times_pred(2,i);
                 time_diff = curr_time - gest_times_GT(2,:);
                 M = min(time_diff(time_diff >= 0));
@@ -344,7 +371,13 @@ classdef recording < handle & matlab.mixin.Copyable
                 title(['model accuracy is: ' num2str(accuracy) ' with a miss rate of: ' num2str(missed_gest) ', and a mean delay of:' num2str(mean_delay)]);
                 legend({'true gestures', 'predicted executed gesture'})
                 figure('Name', 'geasture detection CM')
-                confusionchart(CM, class_name);
+                if ismember(idle_label, GT_pred)
+                    confusionchart(CM, class_name);
+                elseif length(unique(GT_pred)) >= 2
+                    confusionchart(CM, class_name(~idle_idx));
+                else
+                    disp('there is only 1 class in both true labels and predictions, try a better preprocessing pipeline!');
+                end
             end
         end
     end

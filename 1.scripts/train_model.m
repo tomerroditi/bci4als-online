@@ -18,14 +18,14 @@ script_setup()
 
 %% select folders to aggregate data from
 recorders = {'tomer', 'omri', 'nitay','02','03','04','05','06','07','08','09','10','12'}; % people we got their recordings
-% bad recordings from tomer - 7,14 (one of the channels is completly corapted)
+% bad recordings from tomer - 2 (not sure why), 7,14 (one of the channels is completly corapted)
 
 % train_folders_num = {[], [], [], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], []}; % recordings numbers for train data - make sure that they exist
 % val_folders_num =  {[], [], [], [], [], [], [], [], [], [], [], [], [2:5]}; % recordings numbers for validation data- make sure that they exist
 % test_folders_num = {[], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for test data - make sure that they exist
 
-train_folders_num = {[1:3], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for train data - make sure that they exist
-val_folders_num =  {[11], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for validation data- make sure that they exist
+train_folders_num = {[3:6, 9:13], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for train data - make sure that they exist
+val_folders_num =  {[8], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for validation data- make sure that they exist
 test_folders_num = {[], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for test data - make sure that they exist
 
 train_data_paths = create_paths(recorders, train_folders_num);
@@ -36,7 +36,7 @@ test_data_paths = create_paths(recorders, test_folders_num);
 %% define the wanted pipeline and data split options
 options.model_algo       = 'EEGNet';    % ML model to train, choose from {'alexnet','EEG_stft','EEGNet','EEGNet_stft','EEGNet_lstm','EEGNet_bilstm','EEGNet_gru','EEGNet_lstm_stft','EEGNet_bilstm_stft','EEGNet_gru_stft','SVM', 'ADABOOST', 'LDA'}
 options.cont_or_disc     = 'continuous'; % segmentation type choose from {'discrete', 'continuous'}
-options.resample         = [0,3,3];      % resample size for each class [class1, class2, class3]
+options.resample         = [0,2,2];      % resample size for each class [class1, class2, class3]
 options.constants        = constants();  % a class member with constants that are used in the pipeline
 % features or segments
 options.feat_or_data     = 'data';       % specify if you desire to extract data or features, choose from {'data', 'feat'}
@@ -95,8 +95,8 @@ model = train_my_model(options.model_algo, options.constants, ...
 
 %% set working points and evaluate the model on all data stores
 [~, thresh] = train.evaluate(model, CM_title = 'train', print = true, criterion = 'accu', criterion_thresh = 1); 
-test.evaluate(model, CM_title = 'test', print = true, thres_C1 = thresh);
 val.evaluate(model, CM_title = 'val', print = true, thres_C1 = thresh); 
+test.evaluate(model, CM_title = 'test', print = true, thres_C1 = thresh);
 
 %% visualize the predictions
 train.visualize("title", 'train'); 
@@ -104,9 +104,9 @@ val.visualize("title", 'val');
 test.visualize("title", 'test');
 
 %% visualize gesture execution
-train.detect_gestures(5, 5, 7, true); 
-val.detect_gestures(5, 5, 7, true); 
-test.detect_gestures(5, 5, 7, true);
+train.detect_gestures(4, 5, 7, true); 
+val.detect_gestures(4, 5, 7, true); 
+test.detect_gestures(4, 5, 7, true);
 
 %% save the model its settings and the recordings names that were used to create it
 mdl_struct.options = train.options; % save the corected options structure
@@ -115,4 +115,6 @@ mdl_struct.test_name = test.Name;
 mdl_struct.val_name = val.Name;
 mdl_struct.train_name = train.Name;
 mdl_struct.thresh = thresh;
+mdl_struct.cool_time = [];
+mdl_struct.raw_pred_action = [];
 uisave('mdl_struct', 'mdl_struct');

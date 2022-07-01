@@ -30,7 +30,7 @@ for j = 1:size(segments, 5) % 5th dimention is for trials
             Q = quantile(curr_array.', quantiles); 
             Q = Q.';
             % save the normed data
-            norm_seg(:,:,k,i,j) = (curr_array - Q(:,1))./(Q(:,2) - Q(:,1));
+            norm_seg(:,:,k,i,j) = ((curr_array - Q(:,1))./(Q(:,2) - Q(:,1)) - 0.5).*2; % zero center where the quantiles are between [-1 1]
         end
     end
 end

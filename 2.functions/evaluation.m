@@ -59,14 +59,16 @@ if ~isempty(options.criterion) && ~isempty(options.criterion_thresh) % predict w
 
     % label the samples according to the criterion threshold
     [~, class_pred_idx] = max(scores(:,~idle_idx), [], 2);
-    class_pred = class_label(class_pred_idx);
+    class_label_no_idle = class_label(~idle_idx);
+    class_pred = class_label_no_idle(class_pred_idx);
     class_pred(scores(:,idle_idx) >= thresh) = class_label(idle_idx);
 
     title = [' confusion matrix - ' options.criterion ' = '  num2str(options.criterion_thresh)];
 elseif ~isempty(options.thres_C1) % predict with threshold for Idle class
     % label the samples according to the threshold
     [~, class_pred_idx] = max(scores(:,~idle_idx), [], 2);
-    class_pred = class_label(class_pred_idx);
+    class_label_no_idle = class_label(~idle_idx);
+    class_pred = class_label_no_idle(class_pred_idx);
     class_pred(scores(:,idle_idx) >= options.thres_C1) = class_label(idle_idx);
     title = [' confusion matrix - Idle threshold = '  num2str(options.thres_C1)];
     thresh = [];

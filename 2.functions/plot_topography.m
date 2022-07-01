@@ -267,6 +267,7 @@ function h = plot_topography(ch_list, values, make_contour, system, ...
     xlim([-L, L]);
     ylim([-L, L]);  
     colorbar;   % Feel free to modify caxis after calling the function
+    clim([-0.5,0.5]);
     axis square;
     axis off;
     hold off;

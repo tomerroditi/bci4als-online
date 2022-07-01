@@ -3,7 +3,7 @@ clc; clear all; close all;
 script_setup()
 
 %% load the model and its options
-uiopen("load")
+mdl_struct = uiopen("load"); mdl_struct = mdl_struct.mdl_struct; % load the model structure
 options = mdl_struct.options;
 model = mdl_struct.model;
 constants = options.constants;
@@ -18,9 +18,19 @@ sequence_len = options.sequence_len; % length of a sequence to enter in sequence
 step_size = seg_dur - overlap;
 seq_step_size = seg_dur - sequence_overlap;
 
-constants.cool_time = 5;
-constants.raw_pred_action = 5;
-constants.model_thresh = 0.25;
+constants.cool_time = mdl_struct.cool_time;
+constants.raw_pred_action = mdl_struct.raw_pred_action;
+constants.model_thresh = mdl_struct.thresh;
+
+%% perform a quick finetuning before starting a session
+answer = input('would you like to fine tune the model with new data? type "yes"/"no"');
+if strcmp(answer, 'yes')
+    disp('enter the desired path to save the recording in the Lab Recorder Gui, change the file name to EEG.xdf!');
+    system([constants.lab_recorder_path '\LabRecorder.exe'])
+    record_me()
+    path = uigetdir(constants.root_path, 'pls select the folder you saved the new recording to');
+    model = fine_tune_model(mdl_struct, path);
+end
 
 %% Lab Streaming Layer Init
 lib = lsl_loadlib();

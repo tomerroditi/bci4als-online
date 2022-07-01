@@ -35,7 +35,7 @@ end_rec_mark     = num2str(constants.end_recording, '%#.16g');      % end record
 
 % extract the times events and data from EEGstruc
 events = squeeze(struct2cell(events)).';
-marker_times = cell2mat(events(:,2));
+marker_times = cell2mat(events(:,2));    % note that the time is the number of sampled values till the marker
 marker_sign = cell2mat(events(:,1));
 
 % make some verifications on the markers

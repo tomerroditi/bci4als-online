@@ -1,17 +1,30 @@
-function ds = set2ds(segments, labels, constants)
+function ds = set2ds(segments, labels, constants, reject_class)
 % this function creates a data store from a data set
 %
 % Inputs:
-%   - data: a 5D aarray containing the segmented eeg data
+%   - segments: a 5D aarray containing the segmented eeg data
 %   - labels: a 1D array containing the labels of the segmented eeg data
+%   - constants: a constants object
+%   - reject_class: a cell array containing the names of classes to exclude
+%                   from the data store
 %
 % Outputs:
-%   - ds: a data store containing 'data' and 'labels'
+%   - ds: a data store containing 'segments' and 'labels'
 
 if isempty(segments)
     ds = [];
     return 
 end
+
+% get the classes names and labels
+class_names = constants.class_name_model;
+class_labels = constants.class_label;
+
+% reject the desired labels and their coresponding segments
+reject_label = class_labels(ismember(class_names, reject_class));
+reject_idx = ismember(labels, reject_label);
+segments = segments(:,:,:,:, ~reject_idx);
+labels = labels(~reject_idx);
 
 % create cells of the labels - notice we need to feed the datastore with
 % categorical instead of numeric labels
