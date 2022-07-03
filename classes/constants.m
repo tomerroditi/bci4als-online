@@ -11,7 +11,7 @@ classdef constants < handle
         % first name matching the first label and so on
         class_label       = [1;2;3];  % the label to use for each class when labeling segments to train a model (DO NOT use -1\0 as a label)
         class_name_model  = {'Idle', 'Left hand', 'Right hand'}; % choose the class names to use when loading recordings
-        class_name_rec    = {'Idle', 'Left hand', 'Right hand'};   % choose the class names to use when recording new data
+        class_name_rec    = {'Left hand', 'Right hand'};   % choose the class names to use when recording new data
 
         % hardware 
         sample_rate       = 125;
@@ -31,7 +31,7 @@ classdef constants < handle
         % filters parameters
         high_freq         = 38;      % BP high cutoff frequency in HZ
         high_width        = 3;       % the width of the transition band for the high freq cutoff
-        low_freq          = 4;       % BP low cutoff frequency in HZ
+        low_freq          = 7;       % BP low cutoff frequency in HZ
         low_width         = 3;       % the width of the transition band for the low freq cutoff
         notch             = [50, 31.25, 25];      % frequency to implement notch filter
         notch_width       = 0.5;     % the width of the notch filter
@@ -45,7 +45,7 @@ classdef constants < handle
 
         % augmentation probabilities
         x_flip_p          = 0;   % Xflip
-        wgn_p             = 0.3;    % white gaussian noise
+        wgn_p             = 0;    % white gaussian noise
     
         % electrodes names and locations
         electrode_num     = [1,2,3,4,5,6,7,8,9,10,11]; % electrode number
@@ -56,10 +56,10 @@ classdef constants < handle
     
     properties (GetAccess = public, SetAccess = protected)
         % training options
-        verbose_freq           = 100;
+        verbose_freq           = 50;
         max_epochs             = 60;
-        mini_batch_size        = 300;
-        validation_freq        = 100;
+        mini_batch_size        = 1000;
+        validation_freq        = 50;
         learn_rate_drop_period = 50;
 
         % paths
@@ -68,13 +68,14 @@ classdef constants < handle
         channel_loc_path
         lab_recorder_path
         liblsls_path 
+    end
 
+    properties (Access = public)
         % gestures recognition
         cool_time       % the minimum time between action executions
         raw_pred_action % the number of predictions in a raw to make an action
         model_thresh    % the model threshold for classification, see the classification function at 'my_bci' function
     end
-
     
     methods 
         % verify and set important paths for the scripts when constructing a class object

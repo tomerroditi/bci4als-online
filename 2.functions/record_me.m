@@ -1,16 +1,8 @@
 function  record_me(args)
-%% MOTOR IMAGERY Training
-% This code creates a training paradigm with (#) numTargets on screen for
-% (#) numTrials. Before each trial, one of the targets is cued (and remains
-% cued for the entire trial).This code assumes EEG is recorded and streamed
-% through LSL for later offline preprocessing and model learning.
-
-% The function prompts for a test number, and creates a new folder in
-% $rootFolder$. Next, the training begins according to parameters given
-% after %Parameters%. The training will be saved into a vector which
-% corresponds to the true label of the trial. Simultaneously, the
-% lab recorder should create an XDF file(EEG.xdf) that should be paired with
-% the training vector.
+% this function...
+%
+% Inputs:
+%   - args.constants: a constant object
 
 arguments
     args.constants = constants();

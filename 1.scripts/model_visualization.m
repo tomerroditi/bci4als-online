@@ -16,7 +16,7 @@ script_setup()
 
 %% select folders to aggregate data from
 recorders = {'tomer', 'omri', 'nitay'}; % people we got their recordings
-folders_num = {[],[6,9,10], []}; % recordings numbers - make sure that they exist
+folders_num = {[],[1:3], []}; % recordings numbers - make sure that they exist
 data_paths = create_paths(recorders, folders_num);
 % apperantly we have bad recordings (check their fftand see why)...
 % currently bad recordings from tomer: [7,14] 
@@ -51,21 +51,10 @@ disp('new recordings are:'); disp(sort(new.Name));
 
 
 %% normalization, feature extraction and creating a data store
-train.normalize('all'); % normalize the data
-train.extract_feat(); % extract features (if required)
-train.create_ds; % create a data store (from normalized segments)
-
-val.normalize('all'); % normalize the data
-val.extract_feat(); % extract features (if required)
-val.create_ds; % create a data store (from normalized segments)
-
-test.normalize('all'); % normalize the data
-test.extract_feat(); % extract features (if required)
-test.create_ds; % create a data store (from normalized segments)
-
-new.normalize('all'); % normalize the data
-new.extract_feat(); % extract features (if required)
-new.create_ds; % create a data store (from normalized segments)
+train.complete_pipeline();
+val.complete_pipeline();
+test.complete_pipeline();
+new.complete_pipeline();
 
 %% evaluate the model on all data stores and set a working point for the model
 [~, thresh] = train.evaluate(model, CM_title = 'train', print = true, criterion = 'accu', criterion_thresh = 1); 
@@ -79,5 +68,10 @@ val.visualize("title", 'validation'); % visualize predictions
 test.visualize("title", 'test'); % visualize predictions
 new.visualize("title", 'new'); % visualize predictions
 
-% all_rec.fc_activation(model); % get the fc layer activations
-% all_rec.visualize_act('tsne', 3); % search for clusters with t-sne or pca, visualize in 2d or 3d!
+all_rec = multi_recording({train, val, test, new});
+all_rec.create_ds();
+
+all_rec.fc_activation(model); % get the fc layer activations
+all_rec.visualize_act('tsne', 3); % search for clusters with t-sne or pca, visualize in 2d or 3d!
+all_rec.model_output(model);
+all_rec.visualize_output('pca', 3);

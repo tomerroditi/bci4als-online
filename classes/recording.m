@@ -131,7 +131,7 @@ classdef recording < handle & matlab.mixin.Copyable
                 obj
                 args.rsmpl = false; % boolian values to resample or not
                 args.reject_class = {};  % class to reject from data store
-                args.print = false;
+                args.print = false; % print new class distribution after resampling
             end
             rsmpld_obj = [];
             obj.normalize('all');
@@ -140,7 +140,6 @@ classdef recording < handle & matlab.mixin.Copyable
                 rsmpld_obj = obj.rsmpl_data(print = args.print);
                 rsmpld_obj.create_ds(reject_class = args.reject_class)
                 rsmpld_obj = rsmpld_obj.augment();
-                
             end
             obj.create_ds(reject_class = args.reject_class)
         end
@@ -179,17 +178,17 @@ classdef recording < handle & matlab.mixin.Copyable
 
         %% model activations operations
         function fc_activation(obj, model)
-            % find the FC layer index
-            fc = 0;
+            % find the activation layer index
+            flag = 0;
             for i = 1:length(model.Layers)
                 if strcmp('activations', model.Layers(i).Name)
-                    fc = 1;
+                    flag = 1;
                     break
                 end
             end
-            if fc
+            if flag
                 % extract activations from the fc layer
-                obj.fc_act = activations(model, obj.data_store, layer_name);
+                obj.fc_act = activations(model, obj.data_store, 'activations');
                 dims = 1:length(size(obj.fc_act)); % create a dimention order vector
                 dims = [dims(end), dims(1:end - 1)]; % shift last dim (batch size) to be the first
                 obj.fc_act = squeeze(permute(obj.fc_act, dims));
@@ -255,9 +254,9 @@ classdef recording < handle & matlab.mixin.Copyable
                     'pls select from {"pca","tsne"} and type it here: ']);
             end
             if strcmp(dim_red_algo, 'tsne')
-                points = tsne(obj.mdl_output.', 'Algorithm', 'exact', 'Distance', 'euclidean', 'NumDimensions', num_dim);
+                points = tsne(obj.mdl_output, 'Algorithm', 'exact', 'Distance', 'euclidean', 'NumDimensions', num_dim);
             elseif strcmp(dim_red_algo, 'pca')
-                points = pca(obj.mdl_output.');
+                points = pca(obj.mdl_output);
                 points = points.';
                 points = points(:,1:num_dim);
             end

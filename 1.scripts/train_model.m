@@ -24,8 +24,8 @@ recorders = {'tomer', 'omri', 'nitay','02','03','04','05','06','07','08','09','1
 % val_folders_num =  {[], [], [], [], [], [], [], [], [], [], [], [], [2:5]}; % recordings numbers for validation data- make sure that they exist
 % test_folders_num = {[], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for test data - make sure that they exist
 
-train_folders_num = {[3:6, 9:13], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for train data - make sure that they exist
-val_folders_num =  {[8], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for validation data- make sure that they exist
+train_folders_num = {[3:6, 8:10, 12,13], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for train data - make sure that they exist
+val_folders_num =  {[11], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for validation data- make sure that they exist
 test_folders_num = {[], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for test data - make sure that they exist
 
 train_data_paths = create_paths(recorders, train_folders_num);
@@ -36,7 +36,6 @@ test_data_paths = create_paths(recorders, test_folders_num);
 %% define the wanted pipeline and data split options
 options.model_algo       = 'EEGNet';    % ML model to train, choose from {'alexnet','EEG_stft','EEGNet','EEGNet_stft','EEGNet_lstm','EEGNet_bilstm','EEGNet_gru','EEGNet_lstm_stft','EEGNet_bilstm_stft','EEGNet_gru_stft','SVM', 'ADABOOST', 'LDA'}
 options.cont_or_disc     = 'continuous'; % segmentation type choose from {'discrete', 'continuous'}
-options.resample         = [0,2,2];      % resample size for each class [class1, class2, class3]
 options.constants        = constants();  % a class member with constants that are used in the pipeline
 % features or segments
 options.feat_or_data     = 'data';       % specify if you desire to extract data or features, choose from {'data', 'feat'}
