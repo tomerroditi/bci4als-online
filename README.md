@@ -1,8 +1,12 @@
 # BCI4ALS- Team 1- Headset 72
 
+current top results:
+- model accuracy: train -  , val - 
+- gesture detection: train - , val - 
+
 - This is the code repository for the BCI4ALS - TAU, team omri, with reimagined headset 72 from Or Rabani.
 - You are free to use, change, adapt and so on - but please cite properly if published.
-- We assume you have already set up a Matlab environment with libLSL, OpenBCI, EEGLab with ERPLAB & loadXDF plugins installed.
+- We assume you have already set up a Matlab environment with libLSL, OpenBCI, EEGLab with ERPLAB, AAR & loadXDF plugins installed.
 
 ## Project Structure
 
