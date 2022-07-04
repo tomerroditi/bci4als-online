@@ -48,7 +48,7 @@ classdef recording < handle & matlab.mixin.Copyable
                 else
                     error('Error. only {"xdf","edf"} file types are supported for loading data')
                 end
-                [segments, obj.labels, obj.supp_vec, obj.sample_time] = data_segmentation(obj.raw_data, obj.markers, options); % create segments
+                [obj.raw_data, segments, obj.labels, obj.supp_vec, obj.sample_time] = data_segmentation(obj.raw_data, obj.markers, options); % create segments
                 segments = filter_segments(segments, options.cont_or_disc, obj.constants); % filter the segments
                 obj.raw_data_filt = filter_segments(obj.raw_data, options.cont_or_disc, obj.constants); % filter raw data               
                 obj.segments = create_sequence(segments, options); % create sequences
@@ -156,7 +156,7 @@ classdef recording < handle & matlab.mixin.Copyable
                 options.print = false;
             end
             if ~isempty(obj.data_store) % check if the obj is not empty
-                [pred, thresh, CM] = evaluation(model, obj.data_store, CM_title = options.CM_title, ...
+                [pred, thresh, CM] = evaluation(model, obj.data_store, obj.constants, CM_title = options.CM_title, ...
                     criterion = options.criterion, criterion_thresh = options.criterion_thresh, ...
                     thres_C1 = options.thres_C1, print = options.print);
                 obj.predictions = pred;

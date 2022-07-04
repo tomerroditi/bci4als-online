@@ -27,7 +27,7 @@ options.threshold        = 0.65;          % threshold for labeling - percentage 
 %% select folders to aggregate data from
 recorders = {'tomer', 'omri', 'nitay', 'itay','02','03','04','05','06','07','08','09','10','12'}; % people we got their recordings
 % folders_num = {[], [], [], [], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5]}; % recordings numbers - make sure that they exist
-folders_num = {[11], [], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers - make sure that they exist
+folders_num = {[1:15], [], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers - make sure that they exist
 data_paths = create_paths(recorders, folders_num);
 
 all_rec = paths2Mrec(data_paths, options); % create a class member from all paths

@@ -1,4 +1,4 @@
-function [segments, labels, sup_vec, seg_time_sampled] = segment_continouos(data, events,...
+function [data, segments, labels, sup_vec, seg_time_sampled] = segment_continouos(data, events,...
     segment_duration, sequence_len, sequence_overlap, overlap_duration, class_thres, constants)
 % this function creates a continouos segmentation of the raw data
 % Input:
@@ -50,6 +50,12 @@ if sum(start_rec_marker_idx) > 1 || find(start_rec_marker_idx) ~= 1 || sum(end_r
         'Pls review the events structure to find the problem and fix it'])
 end
 
+% reject data before\after expirement starts\ends
+start_time = marker_times(start_rec_marker_idx);
+end_time = marker_times(end_rec_marker_idx);
+data = data(:, start_time:end_time); % remove data
+marker_times = marker_times - start_time + 1; % adjust the marker times 
+
 % define segmentation parameters
 Fs = constants.sample_rate;          % sample rate
 seq_step_size = floor(segment_duration*Fs - sequence_overlap*Fs);
@@ -58,7 +64,7 @@ overlap_size = floor(overlap_duration*Fs +start_buff + end_buff + seq_step_size*
 step_size = segment_size - overlap_size; % step size between 2 segments
 
 % initialize empty segments matrix and labels vector
-num_segments = floor((size(data,2) - segment_size - Fs*10)/step_size) + 1; % exclude the last 10 seconds because when i recorded myself i moved my hand to stop the recording
+num_segments = floor((size(data,2) - segment_size)/step_size) + 1; 
 num_channels = size(data,1);
 segments = zeros(num_channels, segment_size, num_segments);
 labels = zeros(num_segments, 1);

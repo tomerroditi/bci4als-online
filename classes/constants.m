@@ -1,6 +1,6 @@
 classdef constants < handle
     % pipeline parameters and constants
-    properties (Constant)
+    properties (GetAccess = public, SetAccess = protected)
         % classes - general, this has to stay conctant! do not change the
         % existing values, if you want you can add new values!
         class_names       = {'Idle', 'Left hand', 'Right hand'}; 
@@ -10,8 +10,8 @@ classdef constants < handle
         % 'class_name_model' must corespond to each other, meaning the
         % first name matching the first label and so on
         class_label       = [1;2;3];  % the label to use for each class when labeling segments to train a model (DO NOT use -1\0 as a label)
-        class_name_model  = {'Idle', 'Left hand', 'Right hand'}; % choose the class names to use when loading recordings
-        class_name_rec    = {'Left hand', 'Right hand'};   % choose the class names to use when recording new data
+        class_name_model  = {'Idle', 'Left hand', 'Right hand'}; % choose the classes to use when loading recordings
+        class_name_rec    = {'Left hand', 'Right hand'};   % choose classes for new recording
 
         % hardware 
         sample_rate       = 125;
@@ -21,10 +21,10 @@ classdef constants < handle
         buffer_end        = 0;    % number of samples after segment ends 
         
         % recordings setup
-        num_trials        = 10; % num of trials per class
+        num_trials        = 20; % num of trials per class
         trial_length      = 5;  % duration of each class mark
         start_trail       = 1111;     % start trial marker - DO NOT CHANGE!!!
-        start_recordings  = 111; % start recording marker - DO NOT CHANGE!!!
+        start_recordings  = 111;  % start recording marker - DO NOT CHANGE!!!
         end_recording     = 99;     % end recording marker - DO NOT CHANGE!!!
         end_trail         = 9;          % end trial marker - DO NOT CHANGE!!!
   
@@ -35,6 +35,10 @@ classdef constants < handle
         low_width         = 3;       % the width of the transition band for the low freq cutoff
         notch             = [50, 31.25, 25];      % frequency to implement notch filter
         notch_width       = 0.5;     % the width of the notch filter
+        
+        % preprocess algorithms
+        eog_artifact = false;  % true - removes EOG artifacts, flase - dont remove EOG artifacts
+        emg_artifact = false;  % true - removes EMG artifacts, flase - dont remove EMG artifacts
 
         % normalization parameters
         quantiles         = [0.05 0.95]; % quantiles of data to normalize by 
@@ -44,7 +48,7 @@ classdef constants < handle
         edf_removed_chan  = []
 
         % augmentation probabilities
-        x_flip_p          = 0;   % Xflip
+        x_flip_p          = 0;    % Xflip
         wgn_p             = 0;    % white gaussian noise
     
         % electrodes names and locations
@@ -52,17 +56,15 @@ classdef constants < handle
         electrode_loc     = {'C3','C4','Cz','FC1','FC2','FC5','FC6','CP1','CP2','CP5','CP6'}; % electrodes location respectivly to electrode num
         electrode_num_edf = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]; % electrode number
         electrode_loc_edf = {'Pz','Cz','T6','T4','F8','P4','C4','F4','Fz','T5','T3','F7','P3','C3','F3'} % electrodes location respectivly to electrode num
-    end
     
-    properties (GetAccess = public, SetAccess = protected)
-        % training options
+        % DL model training options
         verbose_freq           = 50;
         max_epochs             = 60;
-        mini_batch_size        = 1000;
+        mini_batch_size        = 300;
         validation_freq        = 50;
         learn_rate_drop_period = 50;
 
-        % paths
+        % usefull paths
         eeglab_path
         root_path
         channel_loc_path
@@ -72,8 +74,8 @@ classdef constants < handle
 
     properties (Access = public)
         % gestures recognition
-        cool_time       % the minimum time between action executions
-        raw_pred_action % the number of predictions in a raw to make an action
+        cool_time = 5;       % the minimum time between action executions
+        raw_pred_action = 5; % the number of predictions in a raw to make an action
         model_thresh    % the model threshold for classification, see the classification function at 'my_bci' function
     end
     

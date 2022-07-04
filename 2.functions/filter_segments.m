@@ -61,9 +61,11 @@ end
 trial_length = size(segments,2);
 filt_data = zeros(num_channels,trial_length - buff_start - buff_end, 1, num_trials);
 
-% filter the data
+% filter the data and remove eog artifacts
 % NOTICE that there is not difference between cont and disc for now we
 % might change it later if needed!
+bss_opt.bss_alg = 'iWASOBI';
+
 if strcmp(cont_or_disc, 'discrete')
     for i = 1:num_trials
         % BP filtering
@@ -73,8 +75,15 @@ if strcmp(cont_or_disc, 'discrete')
         for j = 1:length(notch_filter)
             temp = filter(notch_filter{j}, temp, 2);
         end
-        % allocate the filtered data into a new matrix
-        filt_data(:,:,:,i) = temp(:,buff_start + 1:end - buff_end);
+
+        if constants.eog_artifact
+            % eog artifact removal
+            [~, temp] = evalc('autobss(temp(:,buff_start + 1:end - buff_end), bss_opt)');
+            % allocate the cleared data into the new matrix
+            filt_data(:,:,:,i) = temp;
+        else
+            filt_data(:,:,:,i) = temp(:,buff_start + 1:end - buff_end); % allocate the filtered data into the new matrix
+        end
     end
 elseif strcmp(cont_or_disc, 'continuous')
     for i = 1:num_trials
@@ -85,15 +94,20 @@ elseif strcmp(cont_or_disc, 'continuous')
         for j = 1:length(notch_filter)
             temp = filter(notch_filter{j}, temp, 2);
         end
-        % allocate the filtered data into a new matrix
-        filt_data(:,:,:,i) = temp(:,buff_start + 1:end - buff_end);
+
+        if constants.eog_artifact
+            % eog artifact removal
+            [~, temp] = evalc('autobss(temp(:,buff_start + 1:end - buff_end), bss_opt)');
+            filt_data(:,:,:,i) = temp; % allocate the cleared data into the new matrix
+        else
+            filt_data(:,:,:,i) = temp(:,buff_start + 1:end - buff_end); % allocate the filtered data into the new matrix
+        end
     end
 end
 
 end
 
 % consider adding in the future
-
 % % remove blinks
 % EEG = pop_autobsseog( EEG, 128, 128, 'sobi', {'eigratio', 1000000}, 'eog_fd', {'range',[1  5]});
 % EEG = pop_autobssemg( EEG, 5.12, 5.12, 'bsscca', {'eigratio', 1000000}, 'emg_psd', {'ratio', [10],'fs', 125,'femg', 15,'estimator', spectrum.welch({'Hamming'}, 62),'range', [0  8]});

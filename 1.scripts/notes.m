@@ -7,7 +7,6 @@
 % 1) prepare a script for online model evaluation
 % 2) make more recordings
 % 3) test the model in online sessions
-% 4) remove signal before and after recording start\end markers
 % 5) remove MI6 and add the model learning scripts and add them into
 %    'train_my_model' (not urgent)
 

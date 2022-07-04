@@ -1,3 +1,5 @@
+clc; clear all; close all;
+
 % this script is for recording new data.
 % 1. open the openbci gui and connect to the electrodes setup
 % 2. load the desired settings in the gui and start an lsl stream

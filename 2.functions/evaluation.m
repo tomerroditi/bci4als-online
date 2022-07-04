@@ -1,4 +1,4 @@
-function [class_pred, thresh, CM] = evaluation(model, data_store, options)
+function [class_pred, thresh, CM] = evaluation(model, data_store, constants, options)
 % this function classifies a data store according to the given model and a
 % threshold for class 1 (Idle) or a criterion threshold or by its default
 % classification function (max)
@@ -21,6 +21,7 @@ function [class_pred, thresh, CM] = evaluation(model, data_store, options)
 arguments
     model
     data_store
+    constants
     options.thres_C1 = []
     options.CM_title = ''
     options.criterion = []

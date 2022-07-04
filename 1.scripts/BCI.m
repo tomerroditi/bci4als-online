@@ -18,14 +18,14 @@ sequence_len = options.sequence_len; % length of a sequence to enter in sequence
 step_size = seg_dur - overlap;
 seq_step_size = seg_dur - sequence_overlap;
 
-constants.cool_time = mdl_struct.cool_time;
-constants.raw_pred_action = mdl_struct.raw_pred_action;
+constants.cool_time = 5;
+constants.raw_pred_action = 5;
 constants.model_thresh = mdl_struct.thresh;
 
 
 %% perform a quick finetuning before starting a session
 answer = input('would you like to fine tune the model with new data? type "yes"/"no": ');
-if strcmp(answer, 'yes')
+if strcmpi(answer, 'yes')
     disp('enter the desired path to save the recording in the Lab Recorder Gui, change the file name to EEG.xdf!');
     system([constants.lab_recorder_path '\LabRecorder.exe'])
     record_me()
@@ -46,17 +46,19 @@ inlet.open_stream()
 %% check signal quality
 check_streamed_signal(inlet, options, constants);
 flag = false;
-t_1 = timer('TimerFcn',"flag = check_streamed_signal(inlet, options, constants)", 'Period', 2,... 
+t_1 = timer('TimerFcn',"flag = check_streamed_signal(inlet, options, constants);", 'Period', 2,... 
     'ExecutionMode', 'fixedRate', 'TasksToExecute', 5, 'BusyMode', 'drop');
-while t_1.TasksExecuted <= 5
+start(t_1)
+while t_1.TasksExecuted < 5
+    pause(4)
     if flag
-        error('signal quality is damaged, check the electrodes in the openbci gui. try restarting the hardware')
+        error('signal quality is damaged, check the electrodes in the openbci gui. try restarting the hardware'); %#ok<UNRCH> 
     end
 end
+delete t_1 % its a good practice to delete timers after calling them
 %% extract data from stream, preprocess, classify and execute actions
 data_size = floor(seg_dur*Fs + seq_step_size*Fs*(sequence_len - 1) + start_buff + end_buff);
 % set a timer object
-disp(['starting bci in ' num2str(data_size/Fs) ' seconds'])
 t = timer('TimerFcn',"my_bci(inlet, model, options, constants, data_size)", 'Period', step_size,... 
     'ExecutionMode', 'fixedRate', 'TasksToExecute', 1000, 'BusyMode', 'drop');
 start(t);

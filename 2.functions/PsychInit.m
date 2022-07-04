@@ -1,14 +1,14 @@
-function [window,white,ifi] = PsychInit()
+function [window, white] = PsychInit()
 % PsychInit gets all the psychtoolbox initialization parameters
 % working. Mainly opening the screen and getting all the relevant pixel
 % information
 
 % Here we call some default settings for setting up Psychtoolbox
 PsychDefaultSetup(2);
-Screen('Preference', 'SkipSyncTests', 1);
+Screen('Preference', 'SkipSyncTests', 2,  'Verbosity', 0);
 
 % This function will make the Psychtoolbox window semi-transparent:   
-PsychDebugWindowConfiguration(0, 0.8); 
+PsychDebugWindowConfiguration(0, 1); 
 
 % Get the screen numbers. This gives us a number for each of the screens
 % attached to our computer.
@@ -27,7 +27,7 @@ end
 % Define black and white
 white = WhiteIndex(screenNumber);
 black = BlackIndex(screenNumber);
-% Open an on screen window
+% Open an on screen window - supress messegase with evalc
 [window, ~] = PsychImaging('OpenWindow', screenNumber, black);
 
 % Set up alpha-blending for smooth (anti-aliased) lines
@@ -40,6 +40,11 @@ Screen('TextSize', window, 70);
 % set highest priority for screen processes
 topPriorityLevel = MaxPriority(window);
 Priority(topPriorityLevel); 
+
+% display a cross image as baseline
+cross = imread('cross.jpeg', 'jpeg');
+Screen('PutImage', window, cross);
+Screen('Flip', window);
 
 end
 
