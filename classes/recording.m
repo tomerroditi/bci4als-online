@@ -347,7 +347,9 @@ classdef recording < handle & matlab.mixin.Copyable
 
             % calculate the accuracy misse rate and mean delay
             mean_delay = mean(delay);
-            CM = confusionmat(GT_pred(1,:), GT_pred(2,:)); % confusion matrix
+            if ~isempty(GT_pred)
+                CM = confusionmat(GT_pred(1,:), GT_pred(2,:)); % confusion matrix
+            end
             % differ between cases where we have or dont have class idle 
             if ismember(idle_label, GT_pred)
                 accuracy =  sum(diag(CM(~idle_idx, ~idle_idx)))/sum(sum(CM(:,~idle_idx))); 

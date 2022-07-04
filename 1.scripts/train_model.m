@@ -44,11 +44,11 @@ options.feat_alg         = 'none';    % feature extraction algorithm, choose fro
 options.pre_start        = 0.75;          % duration in seconds to include in segments before the start marker
 options.post_start       = 2;            % duration in seconds to include in segments after the start marker
 % continuous only
-options.seg_dur          = 2.5;            % duration in seconds of each segment
-options.overlap          = 2;            % duration in seconds of following segments overlapping
+options.seg_dur          = 4;            % duration in seconds of each segment
+options.overlap          = 3.5;            % duration in seconds of following segments overlapping
 options.sequence_len     = 1;            % number of segments in a sequence (for sequential DL models)
 options.sequence_overlap = 0;            % duration in seconds of overlap between following segments in a sequence
-options.threshold        = 0.65;          % threshold for labeling - percentage of the segment containing the class (only values from 0-1 range)
+options.threshold        = 0.9;          % threshold for labeling - percentage of the segment containing the class (only values from 0-1 range)
 
 %% preprocess the data into train, test and validation sets
 train = paths2Mrec(train_data_paths, options);
@@ -103,9 +103,9 @@ val.visualize("title", 'val');
 test.visualize("title", 'test');
 
 %% visualize gesture execution
-train.detect_gestures(4, 5, 7, true); 
-val.detect_gestures(4, 5, 7, true); 
-test.detect_gestures(4, 5, 7, true);
+train.detect_gestures(3, 5, 7, true); 
+val.detect_gestures(3, 5, 7, true); 
+test.detect_gestures(3, 5, 7, true);
 
 %% save the model its settings and the recordings names that were used to create it
 mdl_struct.options = train.options; % save the corected options structure

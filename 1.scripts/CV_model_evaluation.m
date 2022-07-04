@@ -74,13 +74,13 @@ test_gest_missed = zeros(num_models,1); train_gest_missed = zeros(num_models,1);
 test_mean_delay = zeros(num_models,1); train_mean_delay = zeros(num_models,1);
 test_names = cell(num_models,1);
 
-K = 5; cool_time = 5; % initialize parameters
+K = 4; cool_time = 5; % initialize parameters
 for i = 1:num_models
     [~, thresh, CM_train] = train_mrec{i}.evaluate(models{i}, CM_title = 'train', criterion = 'accu', criterion_thresh = 1); 
     [~, ~, CM_test] = test_mrec{i}.evaluate(models{i}, CM_title = 'test', thres_C1 = thresh);
 
-    [train_gest_accuracy(i), train_gest_missed(i), train_mean_delay(i)] = train_mrec{i}.detect_gestures(K, cool_time, false);
-    [test_gest_accuracy(i), test_gest_missed(i), test_mean_delay(i)] = test_mrec{i}.detect_gestures(K, cool_time, true);
+    [train_gest_accuracy(i), train_gest_missed(i), train_mean_delay(i)] = train_mrec{i}.detect_gestures(K, cool_time, 7, false);
+    [test_gest_accuracy(i), test_gest_missed(i), test_mean_delay(i)] = test_mrec{i}.detect_gestures(K, cool_time, 7, false);
 
     train_accuracy(i) = sum(diag(CM_train))/sum(sum(CM_train));
     test_accuracy(i) = sum(diag(CM_test))/sum(sum(CM_test));

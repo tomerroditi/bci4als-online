@@ -39,6 +39,7 @@ classdef constants < handle
         % preprocess algorithms
         eog_artifact = false;  % true - removes EOG artifacts, flase - dont remove EOG artifacts
         emg_artifact = false;  % true - removes EMG artifacts, flase - dont remove EMG artifacts
+        avg_reference = false; % true - re reference electrodes to cz, false - dont re reference
 
         % normalization parameters
         quantiles         = [0.05 0.95]; % quantiles of data to normalize by 

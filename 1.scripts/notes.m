@@ -5,8 +5,9 @@
 
 % small tasks:
 % 1) prepare a script for online model evaluation
-% 2) make more recordings
+% 2) make more recordings - top priority
 % 3) test the model in online sessions
+% 4) change the marker for missclassified segments in the visualization function 
 % 5) remove MI6 and add the model learning scripts and add them into
 %    'train_my_model' (not urgent)
 

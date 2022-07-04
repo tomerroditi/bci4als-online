@@ -85,6 +85,10 @@ if strcmp(cont_or_disc, 'discrete')
             filt_data(:,:,:,i) = temp(:,buff_start + 1:end - buff_end); % allocate the filtered data into the new matrix
         end
     end
+    % re reference
+    if constants.avg_reference
+        filt_data = filt_data - mean(filt_data);
+    end
 elseif strcmp(cont_or_disc, 'continuous')
     for i = 1:num_trials
         % BP filtering
@@ -103,23 +107,16 @@ elseif strcmp(cont_or_disc, 'continuous')
             filt_data(:,:,:,i) = temp(:,buff_start + 1:end - buff_end); % allocate the filtered data into the new matrix
         end
     end
+    % re reference
+    if constants.avg_reference
+        filt_data = filt_data - mean(filt_data);
+    end
 end
-
 end
-
-% consider adding in the future
-% % remove blinks
-% EEG = pop_autobsseog( EEG, 128, 128, 'sobi', {'eigratio', 1000000}, 'eog_fd', {'range',[1  5]});
-% EEG = pop_autobssemg( EEG, 5.12, 5.12, 'bsscca', {'eigratio', 1000000}, 'emg_psd', {'ratio', [10],'fs', 125,'femg', 15,'estimator', spectrum.welch({'Hamming'}, 62),'range', [0  8]});
 
 % Automatic noise rejection using pop_rejcont
 % if Configuration.PREPROCESS_NOISE_REJECTION ~= 0
 %     [~, V_Rejected_Sample_Range] = pop_rejcont(EEG, 'elecrange', [1:EEG.nbchan] ,'freqlimit', [Configuration.PREPROCESS_LOW_PASS Configuration.PREPROCESS_HIGH_PASS] , 'threshold', 10, 'epochlength', 0.5, 'contiguous', 4, 'addlength', 0.25, 'taper', 'hamming');
 %     EEG = pop_select(EEG, 'nopoint',V_Rejected_Sample_Range);
 % end
-
-% Apply LaPlacian Filter
-% if Configuration.PREPROCESS_LAPLACIAN ~= 0
-%     EEG.data(1,:) = EEG.data(1,:) - ((EEG.data(3,:) + EEG.data(5,:) + EEG.data(7,:) + EEG.data(9,:))./4);
-%     EEG.data(2,:) = EEG.data(2,:) - ((EEG.data(4,:) + EEG.data(6,:) + EEG.data(8,:) + EEG.data(10,:))./4);
-% end                
+           
