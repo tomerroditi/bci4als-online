@@ -172,7 +172,7 @@ classdef recording < handle & matlab.mixin.Copyable
                 options.title = '';
             end
             if ~isempty(obj.supp_vec) && ~isempty(obj.predictions) && ~isempty(obj.sample_time) && ~isempty(obj.Name)
-                visualize_results(obj.supp_vec, obj.predictions, obj.sample_time, options.title)
+                visualize_results(obj.supp_vec, obj.labels, obj.predictions, obj.sample_time, options.title)
             end
         end
 

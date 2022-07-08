@@ -24,7 +24,7 @@ recorders = {'tomer', 'omri', 'nitay','02','03','04','05','06','07','08','09','1
 % val_folders_num =  {[], [], [], [], [], [], [], [], [], [], [], [], [2:5]}; % recordings numbers for validation data- make sure that they exist
 % test_folders_num = {[], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for test data - make sure that they exist
 
-train_folders_num = {[3:6, 8:10, 12,13], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for train data - make sure that they exist
+train_folders_num = {[3:5, 9:10, 12,13], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for train data - make sure that they exist
 val_folders_num =  {[11], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for validation data- make sure that they exist
 test_folders_num = {[], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for test data - make sure that they exist
 
@@ -89,8 +89,7 @@ test.create_ds();
 train_rsmpl_aug = train_rsmpl.augment();
 
 %% train a model - the 'algo' name will determine which model to train
-model = train_my_model(options.model_algo, options.constants, ...
-    "train_ds", train_rsmpl_aug.data_store, "val_ds", val.data_store);
+model = train_my_model(options.model_algo, options.constants, train_rsmpl_aug.data_store, val.data_store);
 
 %% set working points and evaluate the model on all data stores
 [~, thresh] = train.evaluate(model, CM_title = 'train', print = true, criterion = 'accu', criterion_thresh = 1); 

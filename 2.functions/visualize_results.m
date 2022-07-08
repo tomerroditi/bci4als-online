@@ -1,4 +1,4 @@
-function visualize_results(class_time, pred, seg_time, title)
+function visualize_results(class_time, labels, pred, seg_time, title)
 % plot the time points and their class and predicted calss of segments
 %
 % Inputs:
@@ -16,8 +16,9 @@ if isempty(class_time) || isempty(pred) || isempty(seg_time)
 end
 % plot the labels and predictions over time
 figure('Name', [title ' - classification visualization']);
-plot(class_time(2,:), class_time(1,:), 'r*', 'MarkerSize', 2); hold on;
-plot(seg_time, pred, 'b+', 'MarkerSize', 2);
-xlabel('time'); ylabel('labels');
+plot(class_time(2,:), class_time(1,:), 'r_', 'MarkerSize', 3, 'LineWidth', 15); hold on;
+plot(seg_time(pred == labels), pred(pred == labels), 'b_', 'MarkerSize', 2, 'LineWidth', 12); hold on;
+plot(seg_time(pred ~= labels), pred(pred ~= labels), 'black_', 'MarkerSize', 2, 'LineWidth', 12);
+xlabel('time'); ylabel('labels'); legend({'movment timing', 'true label', 'prediction'})
 
 end

@@ -13,6 +13,16 @@ clc; clear all; close all;
 % a quick paths check and setup (if required) for the script
 script_setup()
 
+%% Lab Streaming Layer Init
+lib = lsl_loadlib();
+% resolve a stream...
+result = {};
+while isempty(result)
+    result = lsl_resolve_byprop(lib,'type','EEG'); 
+end
+inlet = lsl_inlet(result{1});
+inlet.open_stream()
+%%
 % call the simulation function
 record_me();
 disp('Finished simulation and EEG recording. pls Stop the LabRecorder!');

@@ -1,16 +1,10 @@
-function [model, selected_feat_idx] = train_my_model(algo, constants, options)
+function [model, selected_feat_idx] = train_my_model(algo, constants, train_ds, val_ds)
 % this function trains a model and select features if required
 %
 % Inputs:
 %   algo: the algorithm to create the model
 %   constants: a Constants object matching the recordings that are used
-%   options: a set of optional parameters
-%       - train\val_ds: a datastore for training\validation data
-%       - features: matrix containing the features
-%       - labels: a vector with labels coresponding to the 'features'
-%                 matrix
-%       - save: save flag
-%       - save_path: a string representing the path to save the model in
+%   train\val_ds: a datastore for training\validation data
 %
 % Outputs:
 %   model: the trained model
@@ -18,47 +12,37 @@ function [model, selected_feat_idx] = train_my_model(algo, constants, options)
 %                      feature dependent
 %
 
-arguments
-    algo
-    constants
-    options.train_ds = [];
-    options.val_ds = [];
-    options.features = [];
-    options.labels = [];
-    options.save = false;
-    options.save_path = '';
-end
-
 warning('off'); % supress warnings print
 
-% train the desired model
-if strcmp(algo, 'EEGNet')
-    model = EEGNet(options.train_ds, options.val_ds, constants);
-elseif strcmp(algo, 'EEG_stft')
-    model = EEG_stft(options.train_ds, options.val_ds, constants);
-elseif strcmp(algo, 'EEGNet_stft')
-    model = EEGNet_stft(options.train_ds, options.val_ds, constants);
-elseif strcmp(algo, 'EEG_AE')
-    model = eeg_AE(options.train_ds, options.val_ds, constants);
-elseif strcmp(algo, 'EEGNet_lstm')
-    model = EEGNet_lstm(options.train_ds, options.val_ds, constants);
-elseif strcmp(algo, 'EEGNet_bilstm')
-    model = EEGNet_bilstm(options.train_ds, options.val_ds, constants);
-elseif strcmp(algo, 'EEGNet_gru')
-    model = EEGNet_gru(options.train_ds, options.val_ds, constants);
-elseif strcmp(algo, 'EEGNet_lstm_stft')
-    model = EEGNet_lstm_stft(options.train_ds, options.val_ds, constants);
-elseif strcmp(algo, 'EEGNet_bilstm_stft')
-    model = EEGNet_bilstm_stft(options.train_ds, options.val_ds, constants);
-elseif strcmp(algo, 'EEGNet_gru_stft')
-    model = EEGNet_gru_stft(options.train_ds, options.val_ds, constants);
-elseif strcmp(algo, 'alexnet')
-    model = alexnet(options.train_ds, options.val_ds, constants);
-else
-    [selected_feat_idx]  = MI5_feature_selection(options.features, options.labels);
-    options.features = options.features(:,selected_feat_idx);
-    MI6_LearnModel(options.features, options.labels, algo, options.save);   
-end
+% check what DL pipelines are available in the folder "4.DL pipelines"
+DL_pipe = dir([constants.root_path '\4.DL pipelines']);
+DL_pipe_names = extractfield(DL_pipe, 'name');
 
+% train the desired model 
+if ismember([algo '.m'], DL_pipe_names)
+    model = eval([algo '(train_ds, val_ds, constants);']); % this will call a DL pipeline
+    selected_feat_idx = [];
+else 
+    % extract the features and labels from the data stores
+    train_data_labels = readall(train_ds); val_data_labels = readall(val_ds);
+    train = train_data_labels(:,1); val = val_data_labels(:,1);
+    train_labels = train_data_labels(:,2); val_labels = val_data_labels(:,2);
+    
+    % convert features and labels from cell arrays into numerical arrays 
+    train = cellfun(@(X) permute(X, [5,1,2,3,4]), train, 'UniformOutput', false);
+    val = cellfun(@(X) permute(X, [5,1,2,3,4]), val, 'UniformOutput', false);
+    train = cell2mat(train); val = cell2mat(val);
+
+    train_labels = cellfun(@(X) double(X), train_labels, 'UniformOutput', true);
+    val_labels = cellfun(@(X) double(X), val_labels, 'UniformOutput', true);
+
+    % insert here any feature selection algorithm you would like 
+    selected_feat_idx = []; % returning empty for now
+
+    % insert here any model that you would like to try
+    model = []; % just return an empty model for now
+    
+
+end
 warning('on');
 end

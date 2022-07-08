@@ -41,7 +41,7 @@ labels = labels(randperm(length(labels))); % randomize labels order
 %% Record Training Stage
 [~, window, white] = evalc('PsychInit()'); % Psychtoolbox Screen Params Init, use evalc to supress annoying messages 
 outletStream.push_sample(start_recordings); % start of recording
-pause(60); % pause for 60 seconds to create reference for the rest of the recording - might be usefull for preprocessing
+pause(40); % pause for 60 seconds to create reference for the rest of the recording - might be usefull for preprocessing
 num_trials = length(labels);
 cross = imread('cross.jpeg', 'jpeg');
 for trial = 1:num_trials

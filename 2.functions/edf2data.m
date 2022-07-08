@@ -35,10 +35,10 @@ latency(ismember(types, "1111.000000000000")) = latency(ismember(types, "1111.00
 duration = ones(length(latency),1);
 
 % apperantly some recordings were interapted before the end expirement
-% marker so we will correct it.
+% marker so we will correct it. - need to make it more general
 if strcmp(types(end,:), '1111.000000000000')
     types(end,:) = '99.00000000000000';
-elseif ~strcmp(types(end,:), '99.00000000000000')
+if  ~strcmp(types(end,:), '99.00000000000000')
     types(end + 1,:) = '99.00000000000000';
 end
 
