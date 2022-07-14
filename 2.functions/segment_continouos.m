@@ -64,26 +64,29 @@ overlap_size = floor(overlap_duration*Fs +start_buff + end_buff + seq_step_size*
 step_size = segment_size - overlap_size; % step size between 2 segments
 
 % initialize empty segments matrix and labels vector
-num_segments = floor((size(data,2) - segment_size)/step_size) + 1; 
+num_segments = floor((size(data,2) - segment_size - Fs*2)/step_size) + 1; 
 num_channels = size(data,1);
 segments = zeros(num_channels, segment_size, num_segments);
 labels = zeros(num_segments, 1);
 
 % create a support vector containing the movement class in each timestamp
 sup_vec = zeros(1,size(data,2));
+classes_markers = mat2cell(classes_markers, ones(size(classes_markers,1),1));
+marker_sign = mat2cell(marker_sign, ones(size(marker_sign,1),1));
+
 for j = 1:size(data,2)
     last_markers = find(marker_times <= j);
     if isempty(last_markers) % idle before something happens
         sup_vec(j) = 1;
-    else % classify according to last marker
+    elseif ismember(marker_sign{last_markers(end)}, classes_markers) % classify according to last marker 
+        curr_class_name = classes_all(strcmp(marker_sign{last_markers(end)}, classes_markers));
         for i = 1:length(classes_use)
-            marker_idx = ismember(classes_all, classes_use(i));
-            if strcmp(marker_sign(last_markers(end),:), classes_markers(marker_idx,:))
+            if any(strcmp(strip(split(classes_use(i), '+')), curr_class_name))
                 sup_vec(j) = class_label(i);
+                break
             end
         end
-    end
-    if sup_vec(j) == 0 % if last marker is trail\rec end
+    else
         sup_vec(j) = 1;
     end
 end
@@ -105,16 +108,64 @@ for i = 1:num_segments
     % track time stamps of the end of segments
     seg_time_sampled(i) = times(seg_idx(end) - end_buff);
 
-    % find noisy segments - high amplitude
-    if max(max(abs(filtered_data(:,seg_idx)))) > 100
+    % find noisy segments - high amplitude or abnormalities in frequency domain
+    if max(max(abs(filtered_data(:,seg_idx(1) + start_buff - Fs*5: seg_idx(end) - end_buff + Fs*2)))) > 100
         labels(i) = -1;
+        % some code to help validate the rejected segments - remove "%"
+        % mark and place a pause on the 'continue' line
+%         subplot(3,1,1)
+%         plot(filtered_data(:,seg_idx(1) + start_buff: seg_idx(end) - end_buff).')
+%         subplot(3,1,2)
+%         plot(filtered_data(:,seg_idx(1) + start_buff - Fs*5: seg_idx(end) - end_buff + Fs*2).');
+%         subplot(3,1,3)
+%         plot(filtered_data.')
+%         xline([seg_idx(1) + start_buff - Fs*5,seg_idx(end) - end_buff + Fs*2])
         continue
+    else
+        [max_values, max_indices] = max(abs(filtered_data(:,seg_idx(1) + start_buff - Fs*5: seg_idx(end) - end_buff + Fs*2)), [], 2);
+        [~, max_idx] = max(max_values);
+        idx = max_indices(max_idx) + seg_idx(1) + start_buff - Fs*5 - 1;
+        if idx + 10 > size(filtered_data, 2)
+            max_values = max(abs(filtered_data(:,idx - 10:end)), [], 2);
+        elseif idx - 10 < 1
+            max_values = max(abs(filtered_data(:,1:idx + 10)), [], 2);
+        else
+            max_values = max(abs(filtered_data(:,idx - 10:idx + 10)), [], 2);
+        end
+        max_values = sort(max_values, "descend");
+        if any(max_values(1:end-1) - max_values(2:end) > 20)
+            labels(i) = -1;
+        % some code to help validate the rejected segments - remove "%"
+        % mark and place a pause on the 'continue' line
+%             subplot(3,1,1)
+%             plot(filtered_data(:,seg_idx(1) + start_buff: seg_idx(end) - end_buff).')
+%             subplot(3,1,2)
+%             plot(filtered_data(:,seg_idx(1) + start_buff - Fs*5: seg_idx(end) - end_buff + Fs*2).');
+%             subplot(3,1,3)
+%             plot(filtered_data.')
+%             xline([seg_idx(1) + start_buff - Fs*5,seg_idx(end) - end_buff + Fs*2])
+            continue
+        end
     end
+%     else
+%         fourier = abs(fft(filtered_data(:,seg_idx), [], 2))./segment_size;
+%         subplot(2,1,1)
+%         plot(fourier.')
+%         subplot(2,1,2)
+%         plot(filtered_data(:,seg_idx).')
+%         pause(0.8)
+%         above_thresh = fourier > 0.25;
+%         above_thresh = sum(above_thresh, 2) ~= 0;
+%         if sum(above_thresh) ~= 0 && sum(above_thresh) <= 4 % reject only segments where several electrodes are noisy,
+%         % sometimes we might get high amplitudes due to physiological noise like blinking
+%             labels(i) = -1;
+%             continue
+%         end
 
     % find the ith label
     tags = sup_vec(seg_idx);
     tags = tags(start_buff + seq_step_size*(sequence_len - 1) + 1: end - end_buff); % consider only the time stamps of the last sequence
-    for j = 1:length(classes_use)
+    for j = 1:length(class_label)
         curr_label = class_label(j);
         class_percent = sum(tags == curr_label);
         if class_percent >= length(tags)*class_thres 

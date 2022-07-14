@@ -11,7 +11,7 @@ classdef multi_recording < handle & matlab.mixin.Copyable & recording
     methods
         %% define the object
         function obj = multi_recording(recordings)
-            if nargin > 0  % support an empty class members
+            if nargin == 1  % support an empty class members
                 if isempty(recordings)
                     return
                 end
@@ -66,6 +66,7 @@ classdef multi_recording < handle & matlab.mixin.Copyable & recording
                 end
                 [obj.supp_vec, obj.sample_time] = fix_times(obj.supp_vec, obj.sample_time); % fix time points
                 obj.num_rec = size(obj.rec_idx, 1); % extract number of recordings 
+                obj.create_ds(); % create a data store for the object
             end
         end
 

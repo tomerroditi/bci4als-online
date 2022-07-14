@@ -15,6 +15,9 @@ function eegnet_lstm = EEGNet_lstm(train_ds, val_ds, constants)
 %   eegnet_lstm: the trained EEGNet model
 %
 
+% clear gpu memory to prevent memory shortage of the gpu
+evalc('gpuDevice(1)');
+
 % extract the input dimentions for the input layer
 input_samples = read(train_ds);
 input_size = size(input_samples{1,1});
@@ -24,24 +27,23 @@ num_classes = length(unique(cellfun(@(X)double(X), input_samples(:,2))));
 layers = [
     sequenceInputLayer(input_size(1:3))
     sequenceFoldingLayer()
-    convolution2dLayer([1 64], 8, "Padding","same")
+    convolution2dLayer([1 64], 8)
+    groupedConvolution2dLayer([input_size(1) 1], 2, "channel-wise")
     batchNormalizationLayer()
-    groupedConvolution2dLayer([input_size(1) 1], 2, 8)
-    batchNormalizationLayer()
-    eluLayer(1)
+    eluLayer()
     averagePooling2dLayer([1 4], "Stride", [1 4])
-    dropoutLayer(0.5)
-    groupedConvolution2dLayer([1 16], 1, 16, "Padding","same")
-    convolution2dLayer([1 1], 16, "Padding", "same")
+    dropoutLayer(0.25)
+    groupedConvolution2dLayer([1 16], 1,"channel-wise","Padding","same")
+    convolution2dLayer(1, 16, "Padding", "same")
     batchNormalizationLayer()
-    eluLayer(1)
-    averagePooling2dLayer([1 8], "Stride", [1 8])
-    dropoutLayer(0.5)
+    eluLayer()
+    averagePooling2dLayer([1 8], "Stride", [1 8], "Padding", "same")
+    dropoutLayer(0.25)
+    fullyConnectedLayer(10)
+    dropoutLayer(0.25)
     sequenceUnfoldingLayer()
     flattenLayer()
-    lstmLayer(128, "OutputMode","last")
-    dropoutLayer(0.25)
-    fullyConnectedLayer(num_classes)
+    lstmLayer(num_classes, "OutputMode","last")
     softmaxLayer()
     classificationLayer()];
 
@@ -63,10 +65,11 @@ options = trainingOptions('adam', ...
     'Shuffle','every-epoch', ...
     'ValidationData', val_ds, ...
     'ValidationFrequency', constants.validation_freq, ...
-    'LearnRateSchedule', 'piecewise',...
-    'LearnRateDropPeriod', constants.learn_rate_drop_period,...
-    'LearnRateDropFactor', 0.1,...
-    'OutputNetwork', 'last-iteration');
+    'LearnRateSchedule', 'piecewise', ...
+    'LearnRateDropPeriod', constants.learn_rate_drop_period, ...
+    'LearnRateDropFactor', 0.1, ...
+    'OutputNetwork', 'last-iteration', ...
+    'BatchNormalizationStatistics', 'moving');
 
 % train the network
 eegnet_lstm = trainNetwork(train_ds, layers, options);

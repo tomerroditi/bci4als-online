@@ -11,7 +11,8 @@ function visualize_results(class_time, labels, pred, seg_time, title)
 
 
 % if no data just return
-if isempty(class_time) || isempty(pred) || isempty(seg_time)
+if isempty(class_time) || isempty(labels) || isempty(pred) || isempty(seg_time)
+    disp([title ' - no data to visualize']);
     return
 end
 % plot the labels and predictions over time
@@ -19,6 +20,6 @@ figure('Name', [title ' - classification visualization']);
 plot(class_time(2,:), class_time(1,:), 'r_', 'MarkerSize', 3, 'LineWidth', 15); hold on;
 plot(seg_time(pred == labels), pred(pred == labels), 'b_', 'MarkerSize', 2, 'LineWidth', 12); hold on;
 plot(seg_time(pred ~= labels), pred(pred ~= labels), 'black_', 'MarkerSize', 2, 'LineWidth', 12);
-xlabel('time'); ylabel('labels'); legend({'movment timing', 'true label', 'prediction'})
+xlabel('time'); ylabel('labels'); legend({'movment timing', 'predictions - correct', 'predictions - incorrect'})
 
 end

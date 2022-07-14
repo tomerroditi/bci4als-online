@@ -12,7 +12,7 @@ class_label      = constants.class_label;
 classes_markers  = num2str(constants.class_marker, '%#.16g');     
 start_rec_mark   = num2str(constants.start_recordings, '%#.16g');   % start recording marker
 end_rec_mark     = num2str(constants.end_recording, '%#.16g');      % end recording marker
-end_trial_mark     = num2str(constants.end_trial, '%#.16g');      % end recording marker
+end_trial_mark   = num2str(constants.end_trail, '%#.16g');      % end recording marker
 
 % make some verifications on the markers
 start_rec_marker_idx = strcmp(events(:,1), start_rec_mark);
@@ -42,9 +42,16 @@ for j = 1:size(data,2)
         sup_vec(j) = 1;
     else % classify according to last marker
         for i = 1:length(classes_use)
-            marker_idx = ismember(classes_all, classes_use(i));
-            if strcmp(marker_sign{last_markers(end)}, classes_markers(marker_idx,:))
-                sup_vec(j) = class_label(i);
+            classes = strip(split(classes_use(i), '+'));
+            for k = 1:length(classes)
+                marker_idx = ismember(classes_all, classes{k});
+                if strcmp(marker_sign{last_markers(end)}, classes_markers(marker_idx,:))
+                    sup_vec(j) = class_label(i);
+                    break
+                end
+            end
+            if sup_vec(j) == class_label(i)
+                break
             end
         end
     end
@@ -65,12 +72,22 @@ sup_vec = [sup_vec; times];
 
 % get the markers that indicate the trial class and create labels vector
 % accordingly
-mark = str2double(marker_sign(ismember(marker_sign, mat2cell(classes_markers, ones(size(classes_markers,1),1)))));
+classes_markers = mat2cell(classes_markers, ones(size(classes_markers,1),1));
+mark = marker_sign(ismember(marker_sign, classes_markers));
 labels = zeros(length(mark),1); % labels that remain as 0 will be rejected at the end!
 for i = 1:length(mark)
-    curr_class = classes_all(classes_markers == mark(i)); % check if we want to take that class
-    if ~isempty(curr_class)
-        labels(i) = class_label(strcmp(classes_use, curr_class)); % if we do want it label the trial
+    curr_class = classes_all(strcmp(classes_markers, mark{i}));
+    for j = 1:length(classes_use)
+        classes = strip(split(classes_use(j), '+'));
+        for k = 1:length(classes)
+            if strcmp(classes{k}, curr_class)
+                labels(i) = class_label(j);
+                break
+            end
+        end
+        if labels(i) == class_label(j)
+            break
+        end
     end
 end
 
@@ -78,7 +95,7 @@ end
 % filter the data to remove drifts and biases, so we could set a common
 % threshold to all recordings for finding corapted segments. we add zeros
 % to keep both signals align with each other (the segments are not filtered!)
-filtered_data = cat(2,zeros(size(data,1), buff_start), MI3_Preprocess(data, 'discrete', constants));
+filtered_data = cat(2,zeros(size(data,1), buff_start), filter_segments(data, 'discrete', constants));
 start_times_indices = marker_times(strcmp(marker_sign, '1111.000000000000'));
 segments = [];
 for i = 1:length(start_times_indices)

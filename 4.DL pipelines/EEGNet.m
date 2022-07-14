@@ -30,16 +30,18 @@ input_size = [input_size, 1];
 % define the network layers
 layers = [
     imageInputLayer(input_size, 'Normalization', 'none')
-    convolution2dLayer([1 64], 8,"Padding","same")
+    convolution2dLayer([1 64], 8)
     groupedConvolution2dLayer([input_size(1) 1], 2,"channel-wise")
     batchNormalizationLayer
     eluLayer
     averagePooling2dLayer([1 4],"Stride",[1 4])
-    groupedConvolution2dLayer([1 16],1,"channel-wise","Padding","same")
-    convolution2dLayer(1,16,"Padding","same")
+    dropoutLayer(0.25)
+    groupedConvolution2dLayer([1 16], 1,"channel-wise","Padding","same")
+    convolution2dLayer(1, 16, "Padding", "same")
     batchNormalizationLayer
     eluLayer
     averagePooling2dLayer([1 8],"Stride",[1 8], "Name", 'activations')
+    dropoutLayer(0.25)
     fullyConnectedLayer(num_classes)
     softmaxLayer
     classificationLayer];

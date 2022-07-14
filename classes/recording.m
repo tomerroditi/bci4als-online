@@ -17,6 +17,7 @@ classdef recording < handle & matlab.mixin.Copyable
         fc_act                  % the last fully connected activations of the givven model to the data store 
         mdl_output              % outputs of a givven model to the data store
         file_type               % data file type - 'edf','xdf'
+        model                   % the bci_model object used to create the prediction array 
     end
 
     methods
@@ -90,6 +91,8 @@ classdef recording < handle & matlab.mixin.Copyable
         end
        
         %% resampling segments
+        % consider adding feature resampling here as well so we dont need
+        % to calculate features twice when resampling a recording
         function new_obj = rsmpl_data(obj, args)
             arguments
                 obj
@@ -97,6 +100,7 @@ classdef recording < handle & matlab.mixin.Copyable
             end
             new_obj = copy(obj);
             [new_obj.segments, new_obj.labels] = resample_data(new_obj.segments, new_obj.labels, args.print);
+            new_obj.features = resample_data(new_obj.features, new_obj.labels, args.print);
         end
             
         %% create a data store (DS) from the obj segments and labels
@@ -108,11 +112,10 @@ classdef recording < handle & matlab.mixin.Copyable
             if isempty(obj.raw_data)
                 return
             end
-            
-            feat_data = obj.options.feat_or_data;
-            if strcmp(feat_data, 'data') % use processed data to create ds
+            feat_or_data = obj.options.feat_or_data;
+            if strcmp(feat_or_data, 'data') % use processed data to create ds
                 obj.data_store = set2ds(obj.segments, obj.labels, obj.constants, args.reject_class);
-            elseif strcmp(feat_data, 'feat') % use features to create ds
+            elseif strcmp(feat_or_data, 'feat') % use features to create ds
                 obj.data_store = set2ds(obj.features, obj.labels, obj.constants, args.reject_class);
             end
         end
@@ -127,41 +130,44 @@ classdef recording < handle & matlab.mixin.Copyable
 
         %% complete data preprocessing pipeline
         function rsmpld_obj = complete_pipeline(obj, args)
+            % consider the fact that you cant (yet) visualize predictions if you
+            % reject classes
             arguments
                 obj
                 args.rsmpl = false; % boolian values to resample or not
                 args.reject_class = {};  % class to reject from data store
                 args.print = false; % print new class distribution after resampling
             end
-            rsmpld_obj = [];
             obj.normalize('all');
-            obj.extract_feat()
+            obj.extract_feat();
+            obj.create_ds(reject_class = args.reject_class)
             if args.rsmpl
                 rsmpld_obj = obj.rsmpl_data(print = args.print);
                 rsmpld_obj.create_ds(reject_class = args.reject_class)
                 rsmpld_obj = rsmpld_obj.augment();
+            else
+                rsmpld_obj = recording(); % return it as an empty recording
             end
-            obj.create_ds(reject_class = args.reject_class)
         end
 
         %% evaluation & classification 
-        function [pred, thresh, CM] = evaluate(obj, model, options)
+        function [pred, thresh, CM] = evaluate(obj, bci_model, options)
             arguments
                 obj
-                model
-                options.thres_C1 = [];
+                bci_model
                 options.CM_title = '';
-                options.criterion = [];
-                options.criterion_thresh = [];
                 options.print = false;
             end
-            if ~isempty(obj.data_store) % check if the obj is not empty
-                [pred, thresh, CM] = evaluation(model, obj.data_store, obj.constants, CM_title = options.CM_title, ...
-                    criterion = options.criterion, criterion_thresh = options.criterion_thresh, ...
-                    thres_C1 = options.thres_C1, print = options.print);
+
+            obj.model = bci_model;         
+            if bci_model.DL_flag 
+                [pred, thresh, CM] = evaluation(bci_model, obj.data_store, obj.constants, CM_title = options.CM_title, ...
+                    thres_C1 = bci_model.threshold, print = options.print);
                 obj.predictions = pred;
             else
-                pred = []; thresh = []; CM = [];
+                [pred, thresh, CM] = evaluation(bci_model.model, obj.data_store, obj.constants, CM_title = options.CM_title, ...
+                    print = options.print);
+                obj.predictions = pred;
             end
         end
         
@@ -171,44 +177,60 @@ classdef recording < handle & matlab.mixin.Copyable
                 obj
                 options.title = '';
             end
-            if ~isempty(obj.supp_vec) && ~isempty(obj.predictions) && ~isempty(obj.sample_time) && ~isempty(obj.Name)
-                visualize_results(obj.supp_vec, obj.labels, obj.predictions, obj.sample_time, options.title)
-            end
+            visualize_results(obj.supp_vec, obj.labels, obj.predictions, obj.sample_time, options.title)
         end
 
         %% model activations operations
-        function fc_activation(obj, model)
-            % find the activation layer index
-            flag = 0;
-            for i = 1:length(model.Layers)
-                if strcmp('activations', model.Layers(i).Name)
-                    flag = 1;
-                    break
-                end
+        function fc_activation(obj, args)
+            arguments
+                obj
+                args.model = obj.model; % a bci_model object
             end
-            if flag
-                % extract activations from the fc layer
-                obj.fc_act = activations(model, obj.data_store, 'activations');
-                dims = 1:length(size(obj.fc_act)); % create a dimention order vector
-                dims = [dims(end), dims(1:end - 1)]; % shift last dim (batch size) to be the first
-                obj.fc_act = squeeze(permute(obj.fc_act, dims));
-                obj.fc_act = reshape(obj.fc_act, [size(obj.fc_act,1), size(obj.fc_act,2)*size(obj.fc_act,3)]);
+
+            if args.model.DL_flag
+                % find the activation layer index
+                flag = 0;
+                for i = 1:length(obj.model.Layers)
+                    if strcmp('activations', args.model.Layers(i).Name)
+                        flag = 1;
+                        break
+                    end
+                end
+                if flag
+                    % extract activations from the fc layer
+                    obj.fc_act = activations(args.model, obj.data_store, 'activations');
+                    dims = 1:length(size(obj.fc_act)); % create a dimention order vector
+                    dims = [dims(end), dims(1:end - 1)]; % shift last dim (batch size) to be the first
+                    obj.fc_act = squeeze(permute(obj.fc_act, dims));
+                    obj.fc_act = reshape(obj.fc_act, [size(obj.fc_act,1), size(obj.fc_act,2)*size(obj.fc_act,3)]);
+                else
+                    disp(['No layer named "activations" found, pls check the model architecture and the layers names,' newline...
+                        'and change the fully connected layer name you would like to visualize to "activations"'])
+                end
             else
-                disp(['No layer named "activations" found, pls check the model architecture and the layers names,' newline...
-                    'and change the fully connected layer name you would like to visualize to "activations"'])
+                disp('"fc_activation" function is not supported for classic ML models');
             end
         end
 
         %% model output
-        function model_output(obj, model)
-            if isa(model, 'dlnetwork') % need to work with dlarrays in that case
-                data_set = readall(obj.data_store);
-                data_set(:,1) = cellfun(@(x) permute(x, [3,1,2]), data_set(:,1), 'UniformOutput',false);
-                dlarray_seg = dlarray(permute(cell2mat(data_set(:,1)),[2,3,4,1]), 'SSCB'); 
-                obj.mdl_output = predict(model, dlarray_seg);
-                obj.mdl_output = gather(extractdata(obj.mdl_output)); % convert dlarray back to double
+        function model_output(obj, args)
+            arguments
+                obj
+                args.model = obj.model;
+            end
+
+            if args.model.DL_flag
+                if isa(args.model, 'dlnetwork') % need to work with dlarrays in that case
+                    data_set = readall(obj.data_store);
+                    data_set(:,1) = cellfun(@(x) permute(x, [3,1,2]), data_set(:,1), 'UniformOutput',false);
+                    dlarray_seg = dlarray(permute(cell2mat(data_set(:,1)),[2,3,4,1]), 'SSCB'); 
+                    obj.mdl_output = predict(args.model, dlarray_seg);
+                    obj.mdl_output = gather(extractdata(obj.mdl_output)); % convert dlarray back to double
+                else
+                    obj.mdl_output = predict(args.model, obj.data_store);
+                end
             else
-                obj.mdl_output = predict(model, obj.data_store);
+                disp('"model_output" function is not supported for classic ML models');
             end
         end
 
@@ -265,11 +287,13 @@ classdef recording < handle & matlab.mixin.Copyable
                 scatter_2D(points, obj);
             elseif num_dim == 3
                 scatter_3D(points, obj);
+            else
+                disp('Unable to plot more than a 3D representation of the data!');
             end
         end
 
         %% gesture detection
-        function gest_time = get_predicted_gestures(obj, K, cool_time, pred_GT)
+        function gest_time = get_gestures(obj, K, cool_time, pred_GT)
             % K - the number of labels detected in a raw to execute a gesture
             % cool_time - time window to not execute a gesture after executing a gesture
             % pred_GT - choose from predicted gestures, 'pred', and ground truth gestures, 'GT'.
@@ -284,7 +308,8 @@ classdef recording < handle & matlab.mixin.Copyable
                 if obj.sample_time(i) - gest_time(2,end) < cool_time
                     continue
                 end
-                [class_label, class_names] = fix_class(obj.constants.class_label, obj.constants.class_names);
+                class_label = obj.constants.class_label;
+                class_names = obj.constants.class_names;
                 idle_idx = strcmp(class_names, 'Idle');
                 class_label_no_idle = class_label(~idle_idx);
                 for j = 1:length(class_label_no_idle)
@@ -297,21 +322,37 @@ classdef recording < handle & matlab.mixin.Copyable
             gest_time(:,gest_time(1,:) == 0) = []; % remove zeros
         end
 
-        function [accuracy, missed_gest, mean_delay, CM, gest_times_pred] = detect_gestures(obj, K, cool_time, M_max, print)
+        function [accuracy, missed_gest, mean_delay, CM, gest_times_pred] = detect_gestures(obj, args)
         % K - the number of gesture detected in a raw to execute a gesture
         % cool_time - time window to not execute a gesture after executing a gesture
         % M_max - maximum delay (in seconds) between gesture start time and gesture recognition
-        if isempty(obj.predictions)
-            accuracy = [];
-            missed_gest = [];
-            mean_delay = [];
-            CM = [];
-            gest_times_pred = [];
-            return
+        arguments
+            obj
+            args.print = false;
+            args.conf_level = obj.model.conf_level;
+            args.cool_time = obj.model.cool_time;
+            args.max_delay = obj.model.max_delay;
         end
-            gest_times_pred = get_predicted_gestures(obj, K, cool_time, 'pred');
-            gest_times_GT = get_predicted_gestures(obj, K, cool_time, 'GT');
-            [class_label, class_name] = fix_class(obj.constants.class_label, obj.constants.class_names);
+            if isempty(obj.predictions)
+                accuracy = [];
+                missed_gest = [];
+                mean_delay = [];
+                CM = [];
+                gest_times_pred = [];
+                return
+            end
+
+            K = args.conf_level;
+            cool_time = args.cool_time;
+            max_delay = args.max_delay;
+            
+            % calculate true and predicted gesture execution times
+            gest_times_pred = get_gestures(obj, K, cool_time, 'pred');
+            gest_times_GT = get_gestures(obj, K, cool_time, 'GT');
+
+            % some labels procedures
+            class_label = obj.constants.class_label;
+            class_name = obj.constants.class_names;
             idle_idx = strcmp(class_name, 'Idle');
             idle_label = class_label(idle_idx); % find the label of Idle class
 
@@ -327,7 +368,7 @@ classdef recording < handle & matlab.mixin.Copyable
                 curr_time = gest_times_GT(2,i);
                 time_diff = gest_times_pred(2,:) - curr_time;
                 M = min(time_diff(time_diff >= 0));
-                if M < M_max % allow up to 7 second response delay from the start of the gesture execution
+                if M < max_delay % allow up to max_delay second response delay from the start of the gesture execution
                     delay = cat(1, delay, M); % save delay of gesture execution
                     GT_pred = cat(2, GT_pred, [gest_times_GT(1,i) ; gest_times_pred(1, time_diff == M)]);
                 else
@@ -340,7 +381,7 @@ classdef recording < handle & matlab.mixin.Copyable
                 curr_time = gest_times_pred(2,i);
                 time_diff = curr_time - gest_times_GT(2,:);
                 M = min(time_diff(time_diff >= 0));
-                if M > M_max % allow up to 7 second response delay from the start of the gesture execution
+                if M > max_delay % allow up to max_delay second response delay from the start of the gesture execution
                     GT_pred = cat(2, GT_pred, [1 ; gest_times_pred(1,i)]);
                 end
             end
@@ -364,7 +405,7 @@ classdef recording < handle & matlab.mixin.Copyable
             
 
             % plot the gestures 
-            if print                
+            if args.print                
                 figure('Name', 'gesture execution moments')
                 plot(obj.supp_vec(2,:), obj.supp_vec(1,:), 'r*', 'MarkerSize', 1); hold on;
                 plot(gest_times_pred(2,:), gest_times_pred(1,:), 'bs', 'MarkerSize', 5);
@@ -379,6 +420,13 @@ classdef recording < handle & matlab.mixin.Copyable
                 else
                     disp('there is only 1 class in both true labels and predictions, try a better preprocessing pipeline!');
                 end
+            end
+        end
+
+        %% set new model to the recording
+        function set_model(obj, bci_model)
+            if ~isempty(obj.raw_data)
+                obj.model = bci_model;
             end
         end
     end

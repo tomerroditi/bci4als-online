@@ -50,7 +50,7 @@ classdef constants < handle
 
         % augmentation probabilities
         x_flip_p          = 0;    % Xflip
-        wgn_p             = 0;    % white gaussian noise
+        wgn_p             = 0.3;    % white gaussian noise
     
         % electrodes names and locations
         electrode_num     = [1,2,3,4,5,6,7,8,9,10,11]; % electrode number
@@ -60,10 +60,10 @@ classdef constants < handle
     
         % DL model training options
         verbose_freq           = 50;
-        max_epochs             = 60;
-        mini_batch_size        = 300;
+        max_epochs             = 50;
+        mini_batch_size        = 200;
         validation_freq        = 50;
-        learn_rate_drop_period = 50;
+        learn_rate_drop_period = 40;
 
         % usefull paths
         eeglab_path
@@ -106,6 +106,23 @@ classdef constants < handle
             obj.channel_loc_path = which('channel_loc.ced'); % chanel location file path  ##### not in use for now #####
             [parent_file_path,~,~] = fileparts(which(mfilename)); % gets the parent folder of the current file name
             [obj.root_path,~,~] = fileparts(parent_file_path); % ### need to change this #### assumes that the main folder is the 'grandfather' fodler of the current file
+        
+            obj.fix_class();
+        end
+
+        function [class_label, class_name] = fix_class(obj)
+            % this function merges classes with the same label nd sorts the
+            % labels and the class names accordingly
+            class_label = obj.class_label;
+            class_name = obj.class_name_model;
+            new_labels = unique(class_label);
+            new_name = cell(length(new_labels), 1); % initialize new cell to store new class names
+            for i = 1:length(new_labels)
+                new_name{i} = strjoin(class_name(new_labels(i) == class_label), ' + '); % concat joint class names
+            end
+            
+            [class_label, idx] = sort(new_labels); % replace old labels with new sorted labels
+            class_name = new_name(idx);            % replace old names with new names
         end
 
         function set_max_epochs(obj, num_epochs)

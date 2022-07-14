@@ -1,4 +1,4 @@
-function [class_pred, thresh, CM] = evaluation(model, data_store, constants, options)
+function [class_pred, thresh, CM] = evaluation(bci_model, data_store, constants, options)
 % this function classifies a data store according to the given model and a
 % threshold for class 1 (Idle) or a criterion threshold or by its default
 % classification function (max)
@@ -19,7 +19,7 @@ function [class_pred, thresh, CM] = evaluation(model, data_store, constants, opt
 %   'criterion_thresh' is given.
 
 arguments
-    model
+    bci_model
     data_store
     constants
     options.thres_C1 = []
@@ -36,19 +36,24 @@ if isempty(data_store)
     return
 end
 
-% extract true labels
-data_set = readall(data_store);
-class_true = cellfun(@double ,data_set(:,2), 'UniformOutput', true);
+model = bci_model.model;
+if ~bci_model.DL_flag
+    % convert data store into data set
+    [data, class_true] = ds2set(data_store);
+    scores = predict(model, data(:,bci_model.feat_idx));
+else
+    % extract true labels
+    data_set = readall(data_store);
+    class_true = cellfun(@double ,data_set(:,2), 'UniformOutput', true);
+    % predict using the model
+    scores = predict(model, data_store);
+end
 
-% predict using the model
-scores = predict(model, data_store);
 class_name = constants.class_name_model;  % the classes we are ussing to train the model
 class_label = constants.class_label; % the label we gave to each class
-[class_label, class_name] = fix_class(class_label, class_name);
 
 % find idle location
 idle_idx = strcmp(class_name, 'Idle');
-
 
 if ~isempty(options.criterion) && ~isempty(options.criterion_thresh) % predict with criterion
     % get the criterion you desire 
