@@ -19,7 +19,7 @@ options.pre_start        = 0.75;          % duration in seconds to include in se
 options.post_start       = 2;            % duration in seconds to include in segments after the start marker
 % continuous only
 options.seg_dur          = 2.5;            % duration in seconds of each segment
-options.overlap          = 2;            % duration in seconds of following segments overlapping
+options.overlap          = 1;            % duration in seconds of following segments overlapping
 options.sequence_len     = 1;            % number of segments in a sequence (for sequential DL models)
 options.sequence_overlap = 0;            % duration in seconds of overlap between following segments in a sequence
 options.threshold        = 0.65;          % threshold for labeling - percentage of the segment containing the class (only values from 0-1 range)
@@ -27,7 +27,7 @@ options.threshold        = 0.65;          % threshold for labeling - percentage 
 %% select folders to aggregate data from
 recorders = {'tomer', 'omri', 'nitay', 'itay','02','03','04','05','06','07','08','09','10','12'}; % people we got their recordings
 % folders_num = {[], [], [], [], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5]}; % recordings numbers - make sure that they exist
-folders_num = {[51], [], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers - make sure that they exist
+folders_num = {[1:15], [], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers - make sure that they exist
 data_paths = create_paths(recorders, folders_num);
 
 all_rec = paths2Mrec(data_paths, options); % create a class member from all paths
@@ -95,11 +95,13 @@ if norm_filt
     figure(6); plot(all_rec.raw_data_filt.'); xline(indices_filt);
     legend(legend_names); title('normalized filtered raw data');
 end
-
+%%
 fourier = []; fourier_filt = [];
 for i = 1:all_rec.num_rec
-    fourier = cat(2, fourier, abs(fft(all_rec.raw_data(:,indices{i,3}), [], 2))./length(all_rec.raw_data(:,indices{i,3})));
-    fourier_filt = cat(2, fourier_filt, abs(fft(all_rec.raw_data_filt(:,indices{i,4}), [], 2))./length(all_rec.raw_data_filt(:,indices{i,4})));
+    [pxx, ~] = pwelch(all_rec.raw_data(:,indices{i,3}).', 125);
+    [pxx_filt, freq] = pwelch(all_rec.raw_data_filt(:,indices{i,4}).', 125);
+    fourier = cat(2, fourier, abs(pxx.'));
+    fourier_filt = cat(2, fourier_filt, abs(pxx_filt.'));
 end
 
 %% fft - normalized raw data
@@ -118,11 +120,10 @@ end
 if norm_fft_filt
     figure('Name', 'fft - normalized filtered raw data'); 
     idx = [1 indices_filt.'];
-    for i = 2:length(idx)
-        subplot(5,3,i-1);
-        dist = floor((idx(i) -  idx(i-1))/2);
-        plot(linspace(0,62.5, dist + 1), fourier_filt(:,idx(i-1):idx(i-1) + dist).');
-        xlim([0, 62.5]);
+    for i = 1:length(idx) - 1
+        subplot(5,3,i);
+        dist = 128; % floor((idx(i) -  idx(i-1))/2);
+        plot(freq.*62.5./pi, fourier_filt(:,(i-1)*129 + 1:i*129).');
     end
     legend(legend_names);
 end

@@ -18,8 +18,8 @@ script_setup()
 recorders = {'tomer', 'omri', 'nitay'}; % people we got their recordings
 folders_num = {[3],[], []}; % recordings numbers - make sure that they exist
 data_paths = create_paths(recorders, folders_num);
-% apperantly we have bad recordings (check their fftand see why)...
-% currently bad recordings from tomer: [7,14] 
+% apperantly we have bad recordings (check their fft and see why)...
+% currently bad recordings from tomer: [1,2,6,8,7,14] 
 
 %% load the model and its options
 uiopen("load")
