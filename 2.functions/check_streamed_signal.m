@@ -1,24 +1,29 @@
 function flag = check_streamed_signal(inlet, options, constants)
 
 
-persistent data  
+persistent data segment_size
+ 
 if isempty(data)
+    Fs = constants.sample_rate;          % sample rate
+    segment_duration = options.seg_dur;
+    sequence_overlap = options.sequence_overlap;
+    seq_step_size = floor(segment_duration*Fs - sequence_overlap*Fs);
+    segment_size = floor(segment_duration*Fs + constants.buffer_start + constants.buffer_end...
+        + seq_step_size*(options.sequence_len - 1)); 
     data = [];
-    % collect data from inlet stream
-    while size(data,2) < constants.sample_rate*5 + constants.buffer_start + constants.buffer_end
-        pause(5)
-        chunk = inlet.pull_chunk();
-        chunk(constants.xdf_removed_chan,:) = [];
-        data = cat(2, data, chunk);
-    end
-else
+end
+
+% collect data from inlet stream
+while size(data,2) < segment_size
+    pause(5)
     chunk = inlet.pull_chunk();
     chunk(constants.xdf_removed_chan,:) = [];
     data = cat(2, data, chunk);
 end
 
 % take a 5 second piece of data (include buffers for filtering)
-segments = data(:,end - constants.sample_rate*5 - constants.buffer_start - constants.buffer_end + 1:end);
+disp(size(data,2) - segment_size + 1)
+segments = data(:,end - segment_size + 1:end);
 
 % filter the data
 segments = filter_segments(segments, options.cont_or_disc, constants);
@@ -65,9 +70,10 @@ end
 % recieving a good signal!
 
 % another idea is to measure the distance of the model activation layer
-% from the data that the model was trined on, if the distance is larger
+% from the data that the model was trained on, if the distance is larger
 % than some value its a good indication for corrupted signal 
-data = data(:,end - constants.sample_rate*5 - constants.buffer_start - constants.buffer_end + 1, end);
+
+data(:,1:constants.sample_rate*2) = [];
 flag = false;
 end
 

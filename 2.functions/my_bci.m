@@ -1,9 +1,9 @@
-function my_bci(inlet, model, options, constants, data_size)
+function my_bci(inlet, bci_model, options, constants, data_size)
 
 persistent data predictions time_from_action labels class_name idle_idx
 if isempty(data)
     data = [];
-    predictions = ones(constants.raw_pred_action,1);
+    predictions = ones(bci_model.conf_level,1);
     time_from_action = 0;
     labels = constants.class_label;
     class_name = constants.class_name_model;
@@ -42,7 +42,7 @@ scores = predict(model, segments(:,:,:));
 curr_prediction = [];
 % idle classification
 for i = 1:length(labels)
-    if strcmpi(class_name{i}, 'Idle') && scores(i) >= constants.model_thresh
+    if strcmpi(class_name{i}, 'Idle') && scores(i) >= bci_model.threshold
         curr_prediction = labels(i);
     end
 end
@@ -60,7 +60,7 @@ predictions = [predictions(2:end); curr_prediction];
 %     disp(predictions);
 curr_time = tic;
 for i = 1:length(labels)
-    if all(predictions == labels(i)) && (curr_time - time_from_action)/10^7 > constants.cool_time
+    if all(predictions == labels(i)) && (curr_time - time_from_action)/10^7 > bci_model.cool_time
         disp(class_name{i})
         time_from_action = tic;
     end

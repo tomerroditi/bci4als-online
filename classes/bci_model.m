@@ -20,7 +20,7 @@ classdef bci_model < handle
                 train
                 val
                 test
-                args.pipeline = true; % whether to apply the data pipeline on the data sets or not
+                args.pipeline = false; % whether to apply the data pipeline on the data sets or not
             end
             %train/val/test - a recording object
             obj.train = train;
@@ -108,6 +108,7 @@ classdef bci_model < handle
 
         %% save a model
         function obj = save(obj, path)
+            % we save only the names so the saved obj will take less memory
             obj.train = obj.train.Name;
             obj.val = obj.val.Name;
             obj.test = obj.test.Name;
@@ -124,7 +125,8 @@ classdef bci_model < handle
             obj.test = names2paths(obj.test); obj.test = paths2Mrec(obj.test);
         end
 
-        % get data from givven recordings - use this if you already have the recordings objects
+        % get data from givven recordings - use this if you already have
+        % the recordings objects (good for CV scripts)
         function get_my_data(obj, recordings)
             train_rec = {}; val_rec = {}; test_rec = {};
             for i = 1:length(recordings)
