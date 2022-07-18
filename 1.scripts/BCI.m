@@ -51,7 +51,7 @@ end
 clear t_1 % its a good practice to delete timers after calling them
 %% extract data from stream, preprocess, classify and execute actions
 data_size = floor(seg_dur*Fs + seq_step_size*Fs*(sequence_len - 1) + start_buff + end_buff);
-% set a timer object
+% set a timer object and start the bci program!
 t = timer('TimerFcn',"my_bci(inlet, bci_model, options, constants, data_size)", 'Period', step_size,... 
     'ExecutionMode', 'fixedRate', 'TasksToExecute', 1000, 'BusyMode', 'drop');
 start(t);

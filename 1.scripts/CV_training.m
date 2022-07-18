@@ -61,6 +61,7 @@ val_accuracy = zeros(num_fold,1); train_accuracy = zeros(num_fold,1);
 val_gest_accuracy = zeros(num_fold,1); train_gest_accuracy = zeros(num_fold,1);
 val_gest_missed = zeros(num_fold,1); train_gest_missed = zeros(num_fold,1);
 val_mean_delay = zeros(num_fold,1); train_mean_delay = zeros(num_fold,1);
+val_names = cell(num_fold,1);
 
 for i = 1:num_fold
     %% gather data into train and val multi recordings
@@ -91,11 +92,22 @@ for i = 1:num_fold
     % compute accuracy
     train_accuracy(i) = sum(diag(CM_train))/sum(sum(CM_train));
     val_accuracy(i) = sum(diag(CM_val))/sum(sum(CM_val));
+    
+    % get the valdiation recording name
+    val_names{i} = model.val.Name;
+    
     % save the model object - use the object save function to save low memory size objects!
     model.save([path '\bci_model_'  num2str(i)]);
+
 end
 
-%% compute the model mean accuracy and its std
+%% place the results in a table and visualize them
+headers = ["train accuracy", "train gesture accuracy", "train missed gestures", "val accuracy",...
+    "val gesture accuracy", "val missed gestures", "val recording"];
+results = table(train_accuracy, train_gest_accuracy, train_gest_missed, val_accuracy, val_gest_accuracy, ...
+    val_gest_missed,  val_names, 'VariableNames', headers);
+
+% compute the model mean accuracy and its std
 mean_train_accu = mean(train_accuracy); std_train_accu = std(train_accuracy);
 mean_train_gest_accu = mean(train_gest_accuracy); std_train_gest_accu = std(train_gest_accuracy);
 mean_train_gest_miss = mean(train_gest_missed); std_train_gest_miss = std(train_gest_missed);

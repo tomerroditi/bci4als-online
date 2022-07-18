@@ -16,20 +16,19 @@ script_setup()
 
 %% select folders to aggregate data from
 recorders = {'tomer', 'omri', 'nitay'}; % people we got their recordings
-folders_num = {[3],[], []}; % recordings numbers - make sure that they exist
+folders_num = {[1],[], []}; % recordings numbers - make sure that they exist
 data_paths = create_paths(recorders, folders_num);
 % apperantly we have bad recordings (check their fft and see why)...
 % currently bad recordings from tomer: [1,2,6,8,7,14] 
 
 %% load the model and its options
 uiopen("load")
-options = mdl_struct.options;
-model = mdl_struct.model;
+options = model.options;
 % thresh = mdl_struct.thresh;
 constants = options.constants;
-val_name = mdl_struct.val_name;
-train_name = mdl_struct.train_name;
-test_name = mdl_struct.test_name;
+train_name = model.train;
+val_name = model.val;
+test_name = model.test;
 
 %% create a multi recording object for each set - make sure that the
 % recordings that were used to train the model are still available!
@@ -57,10 +56,11 @@ test.complete_pipeline();
 new.complete_pipeline();
 
 %% evaluate the model on all data stores and set a working point for the model
-[~, thresh] = train.evaluate(model, CM_title = 'train', print = true, criterion = 'accu', criterion_thresh = 1); 
-test.evaluate(model, CM_title = 'test', print = true, thres_C1 = thresh);
-val.evaluate(model, CM_title = 'val', print = true, thres_C1 = thresh); 
-new.evaluate(model, CM_title = 'new', print = true, thres_C1 = thresh); 
+train.set_model(model); val.set_model(model); test.set_model(model); new.set_model(model); 
+[~, thresh] = train.evaluate(CM_title = 'train', print = true); 
+test.evaluate(CM_title = 'test', print = true);
+val.evaluate(CM_title = 'val', print = true); 
+new.evaluate(CM_title = 'new', print = true); 
 
 %% visualization
 train.visualize("title", 'train'); % visualize predictions
@@ -70,8 +70,9 @@ new.visualize("title", 'new'); % visualize predictions
 
 all_rec = multi_recording({train, val, test, new});
 all_rec.create_ds();
+all_rec.set_model(train.model);
 
-all_rec.fc_activation(model); % get the fc layer activations
-all_rec.visualize_act('tsne', 3); % search for clusters with t-sne or pca, visualize in 2d or 3d!
-all_rec.model_output(model);
-all_rec.visualize_output('pca', 3);
+all_rec.activation_output(); % get the fc layer activations
+all_rec.visualize_layer('pca', 2, 'act'); % search for clusters with t-sne or pca, visualize in 2d or 3d!
+all_rec.model_output();
+all_rec.visualize_layer('pca', 2, 'out');

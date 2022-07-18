@@ -6,8 +6,8 @@ script_setup()
 
 %% load the model and its options
 uiopen("load")
-options = mdl_struct.options;
-model = mdl_struct.model;
+options = model.options;
+net = model.model;
 constants = options.constants;
 
-plot_weights(model, constants.electrode_loc) 
+plot_weights(net, constants.electrode_loc) 

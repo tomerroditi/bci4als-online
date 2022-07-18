@@ -1,5 +1,5 @@
 classdef constants < handle
-    % pipeline parameters and constants
+    % pipeline parameters and general constants object
     properties (GetAccess = public, SetAccess = protected)
         % classes - general, this has to stay conctant! do not change the
         % existing values, if you want you can add new values!
@@ -107,12 +107,19 @@ classdef constants < handle
             [parent_file_path,~,~] = fileparts(which(mfilename)); % gets the parent folder of the current file name
             [obj.root_path,~,~] = fileparts(parent_file_path); % ### need to change this #### assumes that the main folder is the 'grandfather' fodler of the current file
         
-            obj.fix_class();
+            obj.fix_class(); % see the function description below..
         end
 
         function [class_label, class_name] = fix_class(obj)
-            % this function merges classes with the same label nd sorts the
+            % this function merges classes with the same label and sorts the
             % labels and the class names accordingly
+            % 
+            % Input: 
+            %   obj - a constant object
+            % Output:
+            %   class_label - new sorted and unique labels array
+            %   class_name - new merged names for each label
+            
             class_label = obj.class_label;
             class_name = obj.class_name_model;
             new_labels = unique(class_label);
@@ -126,10 +133,12 @@ classdef constants < handle
         end
 
         function set_max_epochs(obj, num_epochs)
+            % set the object number of epochs to new value - num_epochs
             obj.max_num_epochs = num_epochs;
         end
 
         function set_learn_rate_drop_period(obj, num_epochs)
+            % set the object learning rate drop perios to new value - num_epochs
             obj.learn_rate_drop_period = num_epochs;
         end        
     end

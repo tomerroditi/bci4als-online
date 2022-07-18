@@ -23,19 +23,18 @@ train_data_paths = create_paths(recorders, train_folders_num);
 val_data_paths = create_paths(recorders, val_folders_num);
 
 %% define the wanted pipeline and data split options
-options.model_algo       = 'EEGNet';    % ML model to train, choose from {'alexnet','EEG_stft','EEGNet','EEGNet_stft','EEGNet_lstm','EEGNet_bilstm','EEGNet_gru','EEGNet_lstm_stft','EEGNet_bilstm_stft','EEGNet_gru_stft','SVM', 'ADABOOST', 'LDA'}
+options.model_algo       = 'EEGNet';     % ML model to train, choose from {'alexnet','EEG_stft','EEGNet','EEGNet_stft','EEGNet_lstm','EEGNet_bilstm','EEGNet_gru','EEGNet_lstm_stft','EEGNet_bilstm_stft','EEGNet_gru_stft','SVM', 'ADABOOST', 'LDA'}
 options.cont_or_disc     = 'continuous'; % segmentation type choose from {'discrete', 'continuous'}
-options.resample         = [0,3,3];      % resample size for each class [class1, class2, class3]
 options.constants        = constants();  % a class member with constants that are used in the pipeline
 % features or segments
 options.feat_or_data     = 'data';       % specify if you desire to extract data or features, choose from {'data', 'feat'}
-options.feat_alg         = 'none';    % feature extraction algorithm, choose from {'basic', 'wavelet'}
+options.feat_alg         = 'none';       % feature extraction algorithm, choose from {'basic', 'wavelet', 'none'}
 % discrete only
-options.pre_start        = 0.75;          % duration in seconds to include in segments before the start marker
+options.pre_start        = 0.75;         % duration in seconds to include in segments before the start marker
 options.post_start       = 2;            % duration in seconds to include in segments after the start marker
 % continuous only
-options.seg_dur          = 3;            % duration in seconds of each segment
-options.overlap          = 2.5;            % duration in seconds of following segments overlapping
+options.seg_dur          = 4;            % duration in seconds of each segment
+options.overlap          = 3.5;          % duration in seconds of following segments overlapping
 options.sequence_len     = 1;            % number of segments in a sequence (for sequential DL models)
 options.sequence_overlap = 0;            % duration in seconds of overlap between following segments in a sequence
 options.threshold        = 0.7;          % threshold for labeling - percentage of the segment containing the class (only values from 0-1 range)
@@ -77,40 +76,11 @@ for k = 1:length(options_set)
     train = paths2Mrec(train_data_paths, options);
     val = paths2Mrec(val_data_paths, options);
 
-    % normalize the data
-    train.normalize('all')
-    val.normalize('all')
-    
-    % check data distribution in each data set
-    train_distr = tabulate(train.labels);
-    ratio_1_2 = train_distr(1,2)/train_distr(2,2);
-    ratio_1_3 = train_distr(1,2)/train_distr(3,2);
-
-    % resample train set - this is how we reballance our training distribution
-    train_rsmpl = train.rsmpl_data("resample",[0 round(ratio_1_2 - 1) round(ratio_1_3 - 1)]);
-
-    % create a datastore from the normed data - this is usefull if we want to augment our data while training the NN
-    train.create_ds();
-    train_rsmpl.create_ds();
-    val.create_ds();
-    
-%     % add augmentation functions to the resampled train datastore (X flip & random
-%     % gaussian noise) - helps preventing overfitting
-%     train_rsmpl_aug = train_rsmpl.augment();
-    
     % train a model - the 'algo' name will determine which model to train
-    model = train_my_model(options.model_algo, options.constants, ...
-        "train_ds", train_rsmpl.data_store, "val_ds", val.data_store);
+    model = bci_model(train, val, recording(), pipeline = false);
     
     % save the model, its settings and the recordings names that were used to create it
     path = [options.constants.root_path '\6.figures and models\optimization\' num2str(k)];
     mkdir(path)
-
-    mdl_struct.options = options;
-    mdl_struct.model = model;
-    mdl_struct.val_name = val.Name;
-    mdl_struct.train_name = train.Name;
-    mdl_struct.test_name = []; % just to keep the saved structured aligned with other scripts
-    mdl_struct.thresh = [];     % just to keep the saved structured aligned with other scripts
-    save([path '\mdl_struct'], 'mdl_struct')
+    model.save(path);
 end

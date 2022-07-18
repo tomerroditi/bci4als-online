@@ -17,7 +17,7 @@ models = cell(num_models,1);
 % bad recordings from tomer - 2 (not sure why),7,14 (one of the channels is completly corapted)
 recorders = {'tomer', 'omri', 'nitay','02','03','04','05','06','07','08','09','10','12'}; % people we got their recordings
 folder_num = {[3:15], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for train data - make sure that they exist
-model = load(fullfile(folder, dir_list(1).name)); model = model.model;
+load(fullfile(folder, dir_list(1).name));
 options = model.options;
 
 data_paths = create_paths(recorders, folder_num); % create paths from recorders and folder num
@@ -65,6 +65,7 @@ end
 % figure(i)
 % plot_weights(model, constants.electrode_loc) % weights plotting
 
+% place the results in a table
 headers = ["train accuracy", "train gesture accuracy", "train missed gestures", "val accuracy",...
     "val gesture accuracy", "val missed gestures", "val recording"];
 results = table(train_accuracy, train_gest_accuracy, train_gest_missed, val_accuracy, val_gest_accuracy, ...

@@ -16,101 +16,78 @@ seg_dur = zeros(num_models,1); seg_threshold = zeros(num_models,1); overlap = ze
 f = waitbar(0);
 for i = 1:num_models
     waitbar(i/num_models, f, ['preprocessing data, ' num2str(i) ' out of ' num2str(num_models)]);
-
-    mdl_struct = load([path '\' num2str(i) '\mdl_struct']);
-    mdl_struct = mdl_struct.mdl_struct;
-    options = mdl_struct.options;
-
+    load([path '\' num2str(i) '\model']);
+    options = model.options;
     seg_dur(i) = options.seg_dur;
     seg_threshold(i) = options.threshold;
     overlap(i) = options.overlap;
-
-    if exist([path '\' num2str(i) '\train.mat'], "file") && exist([path '\' num2str(i) '\test.mat'], "file")
+    % load recordings if we saved them to save time
+    if exist([path '\' num2str(i) '\train.mat'], "file") && exist([path '\' num2str(i) '\val.mat'], "file")
         continue
     end
-    train_name = mdl_struct.train_name;
-    test_name = mdl_struct.val_name; % i saved them as val
-
-    train_paths = names2paths(train_name);
-    test_paths = names2paths(test_name);
-    
-    train = paths2Mrec(train_paths, options);
-    test = paths2Mrec(test_paths, options);
-
-    train.normalize('all'); test.normalize('all'); % normalize mrec data
-    train.extract_feat(); test.extract_feat(); % extract features (if required)
-    train.create_ds(); test.create_ds(); % create mrec data stores 
-    train.group = 'train'; test.group = 'test'; % give each group a name
-    save([path '\' num2str(i) '\train'], 'train');
-    save([path '\' num2str(i) '\test'], 'test');
+    % create the recordings objects of the model
+    model.load_data();
+    % save the full model (with rec objects) to save time if we want to iterate again
+    save([path '\' num2str(i) '\model'], 'model');
 end
 delete(f);
 
 %% evaluate each model
 % initialize arrays
-train_accuracy = zeros(num_models,1); test_accuracy = zeros(num_models,1);
-train_accuracy_gest = zeros(num_models,1); test_accuracy_gest = zeros(num_models,1);
-missed_train = zeros(num_models,1); missed_test = zeros(num_models,1);
-CM_gest_test = cell(num_models,1); CM_gest_train = cell(num_models,1);
+val_accuracy = zeros(num_models,1); train_accuracy = zeros(num_models,1);
+val_gest_accuracy = zeros(num_models,1); train_gest_accuracy = zeros(num_models,1);
+val_gest_missed = zeros(num_models,1); train_gest_missed = zeros(num_models,1);
+val_mean_delay = zeros(num_models,1); train_mean_delay = zeros(num_models,1);
+val_names = cell(num_models,1);
 
 f = waitbar(0);
-K = 3; cool_time = 5; % initialize parameters
 for i = 1:num_models
     waitbar(i/num_models, f, ['evaluating models, ' num2str(i) ' out of ' num2str(num_models)]);
 
-    train = load([path '\' num2str(i) '\train.mat']); train = train.train;
-    test = load([path '\' num2str(i) '\test.mat']); test = test.test;
-    mdl_struct = load([path '\' num2str(i) '\mdl_struct']); model = mdl_struct.mdl_struct.model;
-
-    [~, thresh, CM_train] = train.evaluate(model, CM_title = 'train', criterion = 'accu', criterion_thresh = 1); 
-    [~, ~, CM_test] = test.evaluate(model, CM_title = 'test', thres_C1 = thresh);
-    
-    [train_accuracy_gest(i), missed_train(i)] = detect_gestures(train, K, cool_time, false);
-    [test_accuracy_gest(i), missed_test(i)] = detect_gestures(test, K, cool_time, false);
-
+    load([path '\' num2str(i) '\model.mat']);
+    [train_CM, val_CM] = model.evaluate();
+    [accuracy, missed_gest, mean_delay, CM] = model.detect_gestures();
+    train_gest_accuracy(i) = accuracy{1}; val_gest_accuracy(i) = accuracy{2};
+    train_gest_missed(i) = missed_gest{1}; val_gest_missed(i) = missed_gest{2};
+    train_mean_delay(i) = mean_delay{1}; val_mean_delay(i) = mean_delay{2};
     train_accuracy(i) = sum(diag(CM_train))/sum(sum(CM_train));
-    test_accuracy(i) = sum(diag(CM_test))/sum(sum(CM_test));
+    val_accuracy(i) = sum(diag(CM_val))/sum(sum(CM_val));
+    val_names{i} = model.val.Name;
 end
 delete(f);
 
 %% visualize results
 % order the results in a table
 headers = ["train accuracy", "train gesture accuracy", "train missed gestures", "test accuracy",...
-    "test gesture accuracy", "test missed gestures", "seg duration", "overlap", "seg threshold"];
-results = table(train_accuracy, train_accuracy_gest, missed_train, test_accuracy, test_accuracy_gest, ...
-    missed_test, seg_dur, overlap, seg_threshold, 'VariableNames', headers);
+    "test gesture accuracy", "test missed gestures", "seg duration", "overlap", "seg threshold", "val names"];
+results = table(train_accuracy, train_gest_accuracy, train_gest_missed, val_accuracy, val_gest_accuracy, ...
+    val_gest_missed, seg_dur, overlap, seg_threshold, val_names, 'VariableNames', headers);
 results_sorted = sortrows(results, ["train missed gestures", "train gesture accuracy"], ["ascend", "descend"]);
 
-%%
+%% this part is to examine a specific model
 K = 50;
-train = load([path '\' num2str(K) '\train.mat']); train = train.train;
-test = load([path '\' num2str(K) '\test.mat']); test = test.test;
-mdl_struct = load([path '\' num2str(K) '\mdl_struct']); model = mdl_struct.mdl_struct.model;
+load([path '\' num2str(K) '\model.mat']);
 
-[~, thresh, CM_train] = train.evaluate(model, CM_title = 'train', criterion = 'accu', criterion_thresh = 1, print = true); 
-[~, ~, CM_test] = test.evaluate(model, CM_title = 'test', thres_C1 = thresh, print = true);
-    
-train.visualize(title = 'train');
-test.visualize(title = 'test');
+[CM_train, CM_val] = model.evaluate(print = true); 
+model.visualize();    
+% model.find_optimal_values(); % need to finish this function
+model.detect_gestures(print = true);
 
-train.detect_gestures(1, 5, true);
-test.detect_gestures(1, 5, true);
-
-
-% % extract the top 5 models
-% results_low_miss = results(missed_test < 0.2,:);
-% test_accuracy_gest_sorted = sort(results_low_miss{:,"test gesture accuracy"}, 'descend');
-% top_3 = find(ismember(results_low_miss{:,"test gesture accuracy"}, test_accuracy_gest_sorted(1:3)));
-% results_top_3 = results_low_miss(top_3,:);
-% 
-% % plot the results of the best 5 models
-% catg = categorical({'train accu', 'train gest accu', 'train gest missed', 'test accu', 'test gest accu', 'test gest missed'});
-% data_to_plot = results_top_3(:,1:6);
-% 
-% for i = 1:3
-%     params = results_top_3{i,7:9};
-%     figure('Name', ['model number ' num2str(i)]); 
-%     title(['model performance - seg duration: ' num2str(params(1)) ', overlap: ' num2str(params(2)) ',seg threshold: ' num2str(params(3))]);
-%     bar(catg, data_to_plot{i,:});
-% end
+%% need to fix this part to match the new model object
+% % % extract the top 5 models
+% % results_low_miss = results(missed_test < 0.2,:);
+% % test_accuracy_gest_sorted = sort(results_low_miss{:,"test gesture accuracy"}, 'descend');
+% % top_3 = find(ismember(results_low_miss{:,"test gesture accuracy"}, test_accuracy_gest_sorted(1:3)));
+% % results_top_3 = results_low_miss(top_3,:);
+% % 
+% % % plot the results of the best 5 models
+% % catg = categorical({'train accu', 'train gest accu', 'train gest missed', 'test accu', 'test gest accu', 'test gest missed'});
+% % data_to_plot = results_top_3(:,1:6);
+% % 
+% % for i = 1:3
+% %     params = results_top_3{i,7:9};
+% %     figure('Name', ['model number ' num2str(i)]); 
+% %     title(['model performance - seg duration: ' num2str(params(1)) ', overlap: ' num2str(params(2)) ',seg threshold: ' num2str(params(3))]);
+% %     bar(catg, data_to_plot{i,:});
+% % end
 

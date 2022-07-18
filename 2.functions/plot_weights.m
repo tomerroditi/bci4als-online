@@ -2,7 +2,7 @@ function [] = plot_weights(model, used_electrodes)
     % extracts the weights of the filters in the 2nd (conv2dlayer)
     temporalFilterWeights = model.Layers(2,1).Weights;
     % extracts the weights of the filters in the 4th (groupedconv2dlayer)
-    spatialFilterWeights = model.Layers(4,1).Weights;
+    spatialFilterWeights = model.Layers(3,1).Weights;
     % get the amount of spatial and temporal filters
     szSpatial = size(spatialFilterWeights); 
     szTemporal = size(temporalFilterWeights);

@@ -1,4 +1,4 @@
-classdef bci_model < handle
+classdef bci_model < handle & matlab.mixin.Copyable
     properties (GetAccess = public, SetAccess = private)
         model              % the ML model
         threshold          % threshold for idle class classification
@@ -8,9 +8,9 @@ classdef bci_model < handle
         conf_level = 4     % confidence level
         cool_time  = 4     % time to wait before executing another gesture
         max_delay  = 7;    % maximum time delay between real gesture execution and gesture recognition
-        train              % recordings that used to train the model
-        val                % recordings that used to validate the model
-        test               % recordings that used to test the model
+        train              % recordings\names that used to train the model
+        val                % recordings\names that used to validate the model
+        test               % recordings\names that used to test the model
     end
 
     methods
@@ -47,6 +47,23 @@ classdef bci_model < handle
             % change the threshold selection process as you wish
             [~, obj.threshold] = evaluation(obj, obj.train.data_store, obj.train.constants, ...
                 criterion = 'accu', criterion_thresh = 1); 
+
+            obj.set_rec_model(); % set the model for the recordings objects
+        end
+
+        %% set recordings model
+        function set_rec_model(obj)
+            % this function is used to set all the object recordings
+            % objects with the current bci_model object. it's creating a 
+            % new object without recording objects, this is used to save 
+            % memory when allocating bci_mdoel objects to recordings objects.
+            new_obj = copy(obj);
+            new_obj.train = obj.train.Name;
+            new_obj.val = obj.val.Name;
+            new_obj.test = obj.test.Name;
+            obj.train.set_model(new_obj);
+            obj.val.set_model(new_obj);
+            obj.test.set_model(new_obj);
         end
         
         %% setting cool time and confidence level values
@@ -55,9 +72,7 @@ classdef bci_model < handle
             obj.conf_level = confidence_level;
             obj.max_delay = max_delay;
             % set the new model to the recordings objects
-            obj.train.set_model(obj);
-            obj.val.set_model(obj);
-            obj.test.set_model(obj);
+            obj.set_rec_model();
         end
         
         %% optimize cool time and confidence level
@@ -71,6 +86,8 @@ classdef bci_model < handle
             end
             obj.cool_time = best(1);
             obj.conf_level = best(2);
+            % set the new model to the recordings objects
+            obj.set_rec_model();
         end
 
         %% evaluate the model on the data
@@ -80,16 +97,16 @@ classdef bci_model < handle
                 args.print = false
             end
             % perform evaluation on each data store
-            [~,~,train_CM] = obj.train.evaluate(obj, CM_title = 'train', print = args.print);
-            [~,~,val_CM] = obj.val.evaluate(obj, CM_title = 'val', print = args.print);
-            [~,~,test_CM] = obj.test.evaluate(obj, CM_title = 'test', print = args.print);
+            [~,~,train_CM] = obj.train.evaluate(CM_title = 'train', print = args.print);
+            [~,~,val_CM] = obj.val.evaluate(CM_title = 'val', print = args.print);
+            [~,~,test_CM] = obj.test.evaluate(CM_title = 'test', print = args.print);
         end
 
         %% visualize predictions
         function visualize(obj)
-            visualize_results(obj.train.supp_vec, obj.train.labels, obj.train.predictions, obj.train.sample_time, 'train');
-            visualize_results(obj.val.supp_vec, obj.val.labels, obj.val.predictions, obj.val.sample_time, 'val');
-            visualize_results(obj.test.supp_vec, obj.test.labels, obj.test.predictions, obj.test.sample_time, 'test');
+            obj.train.visualize("title", 'train');
+            obj.val.visualize("title", 'val');
+            obj.test.visualize("title", 'test');
         end
             
         %% detect gestures - use the updated model parameters
@@ -120,9 +137,15 @@ classdef bci_model < handle
         %% retrieving data to loaded objects
         % load data from files - use this if you loaded a saved bci_model to reconstruct its data
         function load_data(obj)
-            obj.train = names2paths(obj.train); obj.train = paths2Mrec(obj.train);
-            obj.val = names2paths(obj.val); obj.val = paths2Mrec(obj.val);
-            obj.test = names2paths(obj.test); obj.test = paths2Mrec(obj.test);
+            obj.train = names2paths(obj.train); obj.train = paths2Mrec(obj.train, obj.options);
+            obj.val = names2paths(obj.val); obj.val = paths2Mrec(obj.val, obj.options);
+            obj.test = names2paths(obj.test); obj.test = paths2Mrec(obj.test, obj.options);
+            % preprocess the data
+            obj.train.complete_pipeline();
+            obj.val.complete_pipeline();
+            obj.test.complete_pipeline();
+            % set the model for the recordings objects
+            obj.set_rec_model(); 
         end
 
         % get data from givven recordings - use this if you already have
@@ -146,6 +169,8 @@ classdef bci_model < handle
             obj.train = multi_recording(train_rec);
             obj.val = multi_recording(val_rec);
             obj.test = multi_recording(test_rec);
+            % set the model for the recordings objects
+            obj.set_rec_model();
         end 
     end
 end

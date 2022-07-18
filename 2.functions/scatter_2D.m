@@ -19,7 +19,7 @@ end
 figure('Name', 'clusters')
 for i = 1:length(class_labels)
     color = [rand,rand,rand];
-    scatter2(data_points(labels == class_labels(i),1), data_points(labels == class_labels(i),2), 36, color); hold on
+    scatter(data_points(labels == class_labels(i),1), data_points(labels == class_labels(i),2), 36, color); hold on
 end
 legend(class_names);
 drawnow
@@ -63,9 +63,9 @@ while true
     figure('Name', title)
     for i = 1:length(class_labels)
         color = [rand,rand,rand];
-        scatter2(data_points(labels == class_labels(i),1), data_points(labels == class_labels(i),2),...
+        scatter(data_points(labels == class_labels(i),1), data_points(labels == class_labels(i),2),...
             18, color, 'Marker', '.'); hold on % all data points
-        scatter2(rec_points(rec_labels == class_labels(i),1), rec_points(rec_labels == class_labels(i),2),...
+        scatter(rec_points(rec_labels == class_labels(i),1), rec_points(rec_labels == class_labels(i),2),...
             30, color, 'filled'); hold on % selected data points
     end
     legend(legend_names);
