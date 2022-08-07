@@ -1,24 +1,21 @@
-function [features] = wavelets(recording)
+function [features] = wavelets(segments, my_pipeline)
 % This function computes the CWT for each segment in recording
 % #### need to add function description ####
 
 % extract relevant variables from recording
-segments = recording.segments;
-constants = recording.constants;
-Fs = constants.SAMPLE_RATE;
-low_freq = constants.LOW_FREQ;
-high_freq = constants.HIGH_FREQ;
+Fs = my_pipeline.sample_rate;
+low_freq = my_pipeline.low_freq;
+high_freq = my_pipeline.high_freq;
 
 % the input size of alexnet
 resize_size = [227,227];
 
 % we will use different number of voices per octave according to the number
 % of channels available - less channels more voices and vice versa
-if strcmp(recording.file_type, 'xdf')
-    chan_loc = constants.electrode_loc;
+chan_loc = my_pipeline.electrode_loc;
+if length(my_pipeline.electrode_num) == 11
     VoicesPerOctave = 30;
 else
-    chan_loc = constants.electrode_loc_edf;
     VoicesPerOctave = 20;
 end
 
@@ -36,7 +33,7 @@ for i = 1:size(segments,5)
         temp_features_1 = []; temp_features_2 = []; temp_features_3 = [];
         for j = 1:size(segments,1)
             wt = abs(cwt(squeeze(segments(j,:,:,k,i)), FrequencyLimits = [low_freq/Fs high_freq/Fs], VoicesPerOctave = VoicesPerOctave));
-            if strcmp(recording.file_type, 'xdf') % xdf files - 11 electrodes
+            if length(my_pipeline.electrode_num) == 11 % xdf files - 11 electrodes
                 if ismember(chan_loc(j), {'C3','C4','Cz'})
                     temp_features_1 = cat(1,temp_features_1, wt);
                 elseif ismember(chan_loc(j),{'FC1','FC2','FC5','FC6'})
@@ -60,9 +57,11 @@ for i = 1:size(segments,5)
         temp_features_3 = imresize(temp_features_3, resize_size);
 
         % rescale the values to match alexnet inputs
-        temp_features_1 = rescale(temp_features_1, 0, 255);
-        temp_features_2 = rescale(temp_features_2, 0, 255);
-        temp_features_3 = rescale(temp_features_3, 0, 255);
+        for v = 1:size(temp_features_1, 1)
+            temp_features_1(v,:) = rescale(temp_features_1(v,:), 0, 255);
+            temp_features_2(v,:) = rescale(temp_features_2(v,:), 0, 255);
+            temp_features_3(v,:) = rescale(temp_features_3(v,:), 0, 255);
+        end
 
         % concatenate sequence features
         temp_feat = cat(3, temp_features_1, temp_features_2, temp_features_3); % single trial concat

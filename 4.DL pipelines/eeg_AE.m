@@ -1,4 +1,4 @@
-function AE = eeg_AE(train_ds, val_ds, constants)
+function AE = eeg_AE(train_ds, val_ds, my_pipeline)
 % this function generate and train the Deep network presented in the paper 
 % "EEGNet: A Compact Convolutional Neural Network for EEG-based 
 % Brain-Computer Interfaces", with an additional lstm kayer, and returns
@@ -72,7 +72,7 @@ netD = dlnetwork(layers_decoder);
 % start by defining some parameters
 num_epochs = 400;
 val_epoch_freq = 10;
-mini_batch_size = constants.mini_batch_size;
+mini_batch_size = my_pipeline.mini_batch_size;
 learn_rate = 1e-3;
 trailingAvgE = []; trailingAvgSqE = []; trailingAvgD = []; trailingAvgSqD = []; % adam solver parameters
 

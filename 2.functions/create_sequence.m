@@ -1,4 +1,4 @@
-function seq_data = create_sequence(segments, options)
+function seq_data = create_sequence(segments, my_pipeline)
 % this function creates a sequence of eeg data recordings
 %
 % Inputs:
@@ -15,10 +15,10 @@ if isempty(segments)
 end
 
 % extract some paremeters from options structure
-sequence_len = options.sequence_len;          % number of "windows" in each sequence
-seg_dur = options.seg_dur;                    % duration of a single "window"
-sequence_overlap = options.sequence_overlap;  % overlapping between "windows"
-Fs = options.constants.sample_rate;           % the hardware sample rate
+sequence_len = my_pipeline.sequence_len;          % number of "windows" in each sequence
+seg_dur = my_pipeline.seg_dur;                    % duration of a single "window"
+sequence_overlap = my_pipeline.sequence_overlap;  % overlapping between "windows"
+Fs = my_pipeline.sample_rate;           % the hardware sample rate
 seg_time = floor(seg_dur*Fs);
 
 seq_step_size = floor(seg_dur*Fs - sequence_overlap*Fs);

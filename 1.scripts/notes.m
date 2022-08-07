@@ -1,20 +1,13 @@
 %% to do list:
 % big tasks:
-% - figure out how to implement tall arrays for continuous segmentations
-%   for when we have too much data to handle at once...
-% - implement tall arrays in multi_recording objects, add another function
-% for adding a recording obj into a multi recording obj and construct the
-% multi recording by adding one rec at a time to prevent 'out of memory'
-% data when constructing "big data" multi recording obj. adjust the data
-% store creation to act properly with the tall array.
 
 % small tasks:
 % 1) prepare a script for online model evaluation
 % 2) make more recordings - top priority
 % 3) test the model in online sessions
-% 4) fix visualization\evaluation if a class is rejected from a data store
 % 5) fix the model explainability function to auto detect the relevant
 %    layers
+% 11) eddit scripts to be aligned with the changes in the objects
 
 
 %% general notes

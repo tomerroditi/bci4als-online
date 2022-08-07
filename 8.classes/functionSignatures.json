@@ -1,0 +1,51 @@
+{
+  "_schemaVersion": "1.0.0",
+  "my_pipeline.my_pipeline":
+  {
+    "inputs":
+    [
+	{"name":"model_algo", "kind":"namevalue", "type":[["char"],["choices = {'any file name in DL pipelines'}"]]},
+	{"name":"cont_or_disc", "kind":"namevalue", "type":["choices = {'continuous', 'discrete'}"]},
+	{"name":"feat_or_data", "kind":"namevalue", "type":["choices = {'feat', 'data'}"]},
+	{"name":"feat_alg", "kind":"namevalue", "type":["char", "choices = {'none', 'any file name in feature extraction methods'}"]},
+	{"name":"seg_dur", "kind":"namevalue", "type":["numeric"]},
+	{"name":"overlap", "kind":"namevalue", "type":["numeric"]},
+	{"name":"sequence_len", "kind":"namevalue", "type":["numeric"]},
+	{"name":"sequence_overlap", "kind":"namevalue", "type":["numeric"]},
+	{"name":"threshold", "kind":"namevalue", "type":["numeric"]},
+	{"name":"pre_start", "kind":"namevalue", "type":["numeric"]},
+	{"name":"post_start", "kind":"namevalue", "type":["numeric"]},
+	{"name":"class_names", "kind":"namevalue", "type":["char"]},
+	{"name":"class_marker", "kind":"namevalue", "type":["numeric"]},
+	{"name":"class_label", "kind":"namevalue", "type":["numeric"]},
+	{"name":"sample_rate", "kind":"namevalue", "type":["numeric"]},
+	{"name":"buffer_start", "kind":"namevalue", "type":["integer"]},
+	{"name":"buffer_end", "kind":"namevalue", "type":["integer"]},
+	{"name":"class_name_rec", "kind":"namevalue", "type":["char"]},
+	{"name":"num_trials", "kind":"namevalue", "type":["integer"]},
+	{"name":"trial_length", "kind":"namevalue", "type":["numeric"]},
+	{"name":"start_recordings", "kind":"namevalue", "type":["integer"]},
+	{"name":"end_recording", "kind":"namevalue", "type":["integer"]},
+	{"name":"end_trail", "kind":"namevalue", "type":["integer"]},
+	{"name":"high_freq", "kind":"namevalue", "type":["numeric"]},
+	{"name":"high_width", "kind":"namevalue", "type":["numeric"]},
+	{"name":"low_freq", "kind":"namevalue", "type":["numeric"]},
+	{"name":"low_width", "kind":"namevalue", "type":["numeric"]},
+	{"name":"notch", "kind":"namevalue", "type":["numeric"]},
+	{"name":"notch_width", "kind":"namevalue", "type":["numeric"]},
+	{"name":"eog_artifact", "kind":"namevalue", "type":["logical"]},
+	{"name":"avg_reference", "kind":"namevalue", "type":["logical"]},
+	{"name":"quantiles", "kind":"namevalue", "type":["numeric"]},
+	{"name":"removed_chan", "kind":"namevalue", "type":["integer"]},
+	{"name":"x_flip_p", "kind":"namevalue", "type":["numeric"]},
+	{"name":"wgn_p", "kind":"namevalue", "type":["numeric"]},
+	{"name":"electrode_num", "kind":"namevalue", "type":["integer"]},
+	{"name":"electrode_loc", "kind":"namevalue", "type":["char"]},
+	{"name":"verbose_freq", "kind":"namevalue", "type":["integer"]},
+	{"name":"max_epochs", "kind":"namevalue", "type":["integer"]},
+	{"name":"mini_batch_size", "kind":"namevalue", "type":["integer"]},
+	{"name":"validation_freq", "kind":"namevalue", "type":["integer"]},
+    {"name":"learn_rate_drop_period", "kind":"namevalue", "type":["integer"]}
+    ]
+  }	
+}	

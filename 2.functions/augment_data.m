@@ -12,20 +12,23 @@ function aug_data = augment_data(datastore)
 %             column and the labels (as categorical objects) in the second
 %             column
 
+% call global variables since we cant use them as inputs for this function
+global my_x_flip_p
+global my_wgn_p
+
 % seperate data and labels
 data = datastore(:,1);
 labels = datastore(:,2);
-C = constants();
 
 N = size(data,1); % extract number of samples
 
 % aplly x flip with P probability 
-P = C.x_flip_p;
+P = my_x_flip_p;
 indices_flip = randperm(N, round(N*P));
 data(indices_flip) = cellfun(@(X) flip(X,2), data(indices_flip), "UniformOutput", false);
 
 % aplly white gaussian noise with P probability
-P = C.wgn_p;
+P = my_wgn_p;
 indices_noise = randperm(N, round(N*P));
 data(indices_noise) = cellfun(@(X) awgn_func(X, 20), data(indices_noise), "UniformOutput", false);
 

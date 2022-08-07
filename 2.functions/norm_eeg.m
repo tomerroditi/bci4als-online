@@ -15,8 +15,11 @@ function norm_seg = norm_eeg(segments, quantiles)
 %
 
 % return empty array if theres no data
-if isempty(segments)
+if isempty(segments) 
     norm_seg = [];
+    return
+elseif isempty(quantiles)
+    norm_seg = segments;
     return
 end
 

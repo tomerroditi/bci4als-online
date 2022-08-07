@@ -1,21 +1,20 @@
-function my_bci(inlet, bci_model, options, constants, data_size)
+function my_bci(inlet, bci_model, my_pipeline, data_size)
 
 persistent data predictions time_from_action labels class_name idle_idx
+
+% initialize some values at the first call
 if isempty(data)
     data = [];
     predictions = ones(bci_model.conf_level,1);
     time_from_action = 0;
-    labels = constants.class_label;
-    class_name = constants.class_name_model;
-    % sort labels to match the model output
-    [labels, indices] = sort(labels, 'ascend');
-    class_name = class_name(indices);
+    labels = my_pipeline.class_label;
+    class_name = my_pipeline.class_name_model;
     idle_idx = strcmpi(class_name, 'Idle');
     disp('bci has started')
 end
 
 chunk = inlet.pull_chunk();
-chunk(constants.xdf_removed_chan,:) = [];
+chunk(my_pipeline.xdf_removed_chan,:) = [];
 data = [data, chunk];
 if size(data,2) < data_size
     return
@@ -24,17 +23,17 @@ data = data(:,end - data_size + 1:end);
 segments = data;
 
 % filter the data
-segments = filter_segments(segments, options.cont_or_disc, constants);
+segments = filter_segments(segments, my_pipeline);
 
 % create the sequence 
-segments = create_sequence(segments, options);
+segments = create_sequence(segments, my_pipeline);
 
 % normalize the data
-segments = norm_eeg(segments, constants.quantiles);
+segments = norm_eeg(segments, my_pipeline.quantiles);
 
 % extract features if needed
-if ~strcmp(options.feat_alg, 'none')
-    segments = extract_feat(segments, options);
+if ~strcmp(my_pipeline.feat_alg, 'none')
+    segments = extract_feat(segments, my_pipeline);
 end
 
 % predict and label the current segment
@@ -63,6 +62,7 @@ for i = 1:length(labels)
     if all(predictions == labels(i)) && (curr_time - time_from_action)/10^7 > bci_model.cool_time
         disp(class_name{i})
         time_from_action = tic;
+        % insert an action like yes\no sound here
     end
 end
 % indicate if the model picked up a movement

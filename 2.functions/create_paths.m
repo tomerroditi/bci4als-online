@@ -3,12 +3,11 @@ function data_paths = create_paths(recorders, folders_num)
 %
 % Inputs:
 %   recorders: a cell array with the recorders names
-%   folders_num: a cell array with the numbers of the desired recordings
-%                for each recorder
+%   folders_num: a cell array with numerical arrays containing the numbers
+%                of the desired recordings for each recorder
 %
 % Outputs:
 %   data_paths: a cell array with all the paths to the desired recordings
-%               and labels
 %
 
 
@@ -35,12 +34,18 @@ else
     root_path = strjoin(root_path, '\'); 
 end
 
-% build the paths of the recordings files
+
 counter = 0;
+% some sorting - very important for the big data data store construction to
+% be aligned with the stored true labels 
+folders_num = cellfun(@sort, folders_num, 'UniformOutput', false);
+[recorders, I] = sort(recorders); % sort the names
+folders_num = folders_num(I); % sort numbers according to names
+% build the paths of the recordings files
 for i = 1:length(recorders)
     for j = 1:length(folders_num{i})
         counter = counter + 1;
-        path = fullfile(root_path, '3.recordings', strcat('rec_', recorders{i}), strcat('Test', num2str(folders_num{i}(j))));
+        path = fullfile(root_path, '3.recordings', strcat(recorders{i}), num2str(folders_num{i}(j),'%03.f'));
         data_paths{counter} = path; %#ok<AGROW> 
     end
 end

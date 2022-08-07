@@ -4,10 +4,10 @@ function scatter_3D(data_points, recording)
 labels = recording.labels;
 
 % extract class labels and names
-const = recording.constants;
-class_labels = const.class_label;
-class_names = const.class_name_model;
-class_names_chosen = const.class_name_model;
+my_pipeline = recording.my_pipeline;
+class_labels = my_pipeline.class_label;
+class_names = my_pipeline.class_name_model;
+class_names_chosen = my_pipeline.class_name_model;
 class_names_chosen = cellfun(@(X) strcat(X, ' - chosen'), class_names_chosen, 'UniformOutput', false);
 % create a new cell for legend names when ploting specific recordings
 legend_names = {};

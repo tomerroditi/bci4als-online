@@ -1,4 +1,4 @@
-function filt_data = filter_segments(segments, cont_or_disc, constants)
+function filt_data = filter_segments(segments, my_pipeline)
 % this function is aplying the preprocess filtering phase in the pipeline. 
 % It filters the data using BP and notch filters.
 %
@@ -14,27 +14,23 @@ function filt_data = filter_segments(segments, cont_or_disc, constants)
 %   - postprocces_segments: a 4D matrix of the segments after being
 %   preproccesed, the dimentions order are the same as in 'segments'
 
-% Notes - add in the future:
-% - see comments in the end the script
-
 % define some usefull variables
 num_trials   = size(segments,4);
 num_channels = size(segments,1);
 
 % import some constants for the filters design and filtering 
-buff_start   = constants.buffer_start;
-buff_end     = constants.buffer_end;
-Fs           = constants.sample_rate;
-high_freq    = constants.high_freq;
-low_freq     = constants.low_freq;
-high_width   = constants.high_width;
-low_width    = constants.low_width;
-notch_freq   = constants.notch;
-notch_width  = constants.notch_width;
+buff_start   = my_pipeline.buffer_start;
+buff_end     = my_pipeline.buffer_end;
+Fs           = my_pipeline.sample_rate;
+high_freq    = my_pipeline.high_freq;
+low_freq     = my_pipeline.low_freq;
+high_width   = my_pipeline.high_width;
+low_width    = my_pipeline.low_width;
+notch_freq   = my_pipeline.notch;
+notch_width  = my_pipeline.notch_width;
 
 % implement a bandpass filter and a notch filter.
-% we will use IIR filters to get faster preprocessing in the online sessions.
-
+% we will use IIR filters to get less delay in the online sessions.
 persistent BP_filter notch_filter; 
 
 if isempty(BP_filter)
@@ -66,7 +62,7 @@ filt_data = zeros(num_channels,trial_length - buff_start - buff_end, 1, num_tria
 % might change it later if needed!
 bss_opt.bss_alg = 'iWASOBI';
 
-if strcmp(cont_or_disc, 'discrete')
+if strcmp(my_pipeline.cont_or_disc, 'discrete')
     for i = 1:num_trials
         % BP filtering
         temp = filter(BP_filter, squeeze(segments(:,:,:,i)).');
@@ -76,8 +72,8 @@ if strcmp(cont_or_disc, 'discrete')
             temp = filter(notch_filter{j}, temp, 2);
         end
 
-        if constants.eog_artifact
-            % eog artifact removal
+        if my_pipeline.eog_artifact
+            % eog & emg artifact removal
             [~, temp] = evalc('autobss(temp(:,buff_start + 1:end - buff_end), bss_opt)');
             % allocate the cleared data into the new matrix
             filt_data(:,:,:,i) = temp;
@@ -86,10 +82,10 @@ if strcmp(cont_or_disc, 'discrete')
         end
     end
     % re reference
-    if constants.avg_reference
+    if my_pipeline.avg_reference
         filt_data = filt_data - mean(filt_data);
     end
-elseif strcmp(cont_or_disc, 'continuous')
+elseif strcmp(my_pipeline.cont_or_disc, 'continuous')
     for i = 1:num_trials
         % BP filtering
         temp = filter(BP_filter, squeeze(segments(:,:,:,i)).');
@@ -99,7 +95,7 @@ elseif strcmp(cont_or_disc, 'continuous')
             temp = filter(notch_filter{j}, temp, 2);
         end
 
-        if constants.eog_artifact
+        if my_pipeline.eog_artifact
             % eog artifact removal
             [~, temp] = evalc('autobss(temp(:,buff_start + 1:end - buff_end), bss_opt)');
             filt_data(:,:,:,i) = temp; % allocate the cleared data into the new matrix
@@ -108,15 +104,9 @@ elseif strcmp(cont_or_disc, 'continuous')
         end
     end
     % re reference
-    if constants.avg_reference
+    if my_pipeline.avg_reference
         filt_data = filt_data - mean(filt_data);
     end
 end
 end
-
-% Automatic noise rejection using pop_rejcont
-% if Configuration.PREPROCESS_NOISE_REJECTION ~= 0
-%     [~, V_Rejected_Sample_Range] = pop_rejcont(EEG, 'elecrange', [1:EEG.nbchan] ,'freqlimit', [Configuration.PREPROCESS_LOW_PASS Configuration.PREPROCESS_HIGH_PASS] , 'threshold', 10, 'epochlength', 0.5, 'contiguous', 4, 'addlength', 0.25, 'taper', 'hamming');
-%     EEG = pop_select(EEG, 'nopoint',V_Rejected_Sample_Range);
-% end
            

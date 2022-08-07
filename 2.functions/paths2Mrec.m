@@ -1,4 +1,4 @@
-function multi_rec = paths2Mrec(paths, options)
+function multi_rec = paths2Mrec(paths, my_pipeline)
 % this function creates a multi recording object from the given paths and
 % options
 %
@@ -11,15 +11,17 @@ function multi_rec = paths2Mrec(paths, options)
 %   multi_rec: a multi recording object containing the data from the data
 %              paths, preprocessed as specified in options
 
-
-    % create a waitbar to show progress
-    f = waitbar(0, 'preprocessing data, pls wait');
+    if isempty(paths)
+        multi_rec = multi_recording();
+        return
+    end
     
-    recordings = cell(1,length(paths));
+    f = waitbar(0, 'preprocessing data, pls wait'); % create a waitbar to show progress
+    multi_rec = multi_recording(); % empty multi recording object
     for i = 1:length(paths)
         waitbar(i/length(paths), f, ['preprocessing data, recording ' num2str(i) ' out of ' num2str(length(paths))]); % update the wait bar
-        recordings{i} = recording(paths{i}, options); % create a class member for each path
+        rec = recording(paths{i}, my_pipeline); % create a class member for each path
+        multi_rec.append_rec(rec);
     end
-    multi_rec = multi_recording(recordings); % create a class member from all paths
     delete(f); %close the wait bar
 end

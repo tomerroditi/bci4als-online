@@ -1,0 +1,139 @@
+classdef constants < handle
+    % pipeline parameters and general constants object
+    properties (GetAccess = public, SetAccess = protected)
+        % classes - general, this has to stay conctant, it represents the 
+        % classes and their markers in the XDF files! do not change the
+        % existing values, its possible to add new classes and their markers
+        % if you decided to create new movements to classify!
+        class_names       = {'Idle', 'Left hand', 'Right hand'}; 
+        class_marker      = [1;2;3];
+
+        % classes - training model\recording data, these are the labels we 
+        % give to each class in the recording files. 'class_label' and
+        % 'class_name_model' must corespond to each other, meaning the
+        % first name matching the first label and so on.
+        % its possible to give the same label to more than one class, in
+        % this case the classes are merged into one class, check
+        % 'fix_class' method for more information.
+        class_name_model  = {'Idle', 'Left hand', 'Right hand'}; % choose the classes to use when loading recordings
+        class_label       = [1;2;3];  % the label to use for each class when labeling segments to train a model (DO NOT use -1\0 as a label)
+
+        % hardware 
+        sample_rate       = 125; % the sample rate of the headset
+        
+        % buffers size for segmentations - this is used to prevent inclusion
+        % of the unstable part of the filtered signal in the final segments
+        % (removed after filtering)
+        buffer_start      = 2500; % number of samples before segment starts
+        buffer_end        = 0;    % number of samples after segment ends 
+        
+        % recordings setup - parameters for new recordings
+        class_name_rec    = {'Left hand', 'Right hand'};   % choose classes for new recording
+        num_trials        = 20;    % num of trials per class
+        trial_length      = 5;     % duration of each class mark
+        start_trail       = 1111;  % start trial marker - DO NOT CHANGE!!!
+        start_recordings  = 111;   % start recording marker - DO NOT CHANGE!!!
+        end_recording     = 99;    % end recording marker - DO NOT CHANGE!!!
+        end_trail         = 9;     % end trial marker - DO NOT CHANGE!!!
+  
+        % filters parameters
+        high_freq         = 38;      % BP high cutoff frequency in HZ
+        high_width        = 3;       % the width of the transition band for the high freq cutoff
+        low_freq          = 7;       % BP low cutoff frequency in HZ
+        low_width         = 3;       % the width of the transition band for the low freq cutoff
+        notch             = [50, 31.25, 25];% frequency to apply notch filter on
+        notch_width       = 0.5;     % the width of the notch filter
+        
+        % preprocess algorithms - implemented in the filtering function
+        eog_artifact  = false;  % true - removes EOG\emg artifacts, flase - dont remove EOG\emg artifacts
+        avg_reference = false;  % true - re reference electrodes to cz, false - dont re reference
+
+        % normalization parameters
+        quantiles         = [0.05 0.95]; % quantiles of data to normalize by 
+    
+        % preprocessing settings and options
+        xdf_removed_chan  = [12,13,14,15,16];  % electrodes to remove
+        edf_removed_chan  = []
+
+        % augmentations probabilities
+        x_flip_p          = 0;    % Xflip
+        wgn_p             = 0.7;  % white gaussian noise
+    
+        % electrodes names and locations
+        electrode_num     = [1,2,3,4,5,6,7,8,9,10,11]; % electrode number
+        electrode_loc     = {'C3','C4','Cz','FC1','FC2','FC5','FC6','CP1','CP2','CP5','CP6'}; % electrodes location respectivly to electrode num
+        electrode_num_edf = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]; % electrode number
+        electrode_loc_edf = {'Pz','Cz','T6','T4','F8','P4','C4','F4','Fz','T5','T3','F7','P3','C3','F3'} % electrodes location respectivly to electrode num
+    
+        % DL model training options - used in the DL pipelines
+        verbose_freq           = 50;
+        max_epochs             = 50;
+        mini_batch_size        = 200;
+        validation_freq        = 50;
+        learn_rate_drop_period = 40;
+
+        % usefull paths
+        eeglab_path
+        root_path
+        channel_loc_path
+        lab_recorder_path
+        liblsls_path 
+    end
+
+    methods 
+        % verify and set important paths for the scripts when constructing a class object
+        function obj = constants()
+            % find paths of files
+            if exist('eeglab.m', 'file')
+                obj.eeglab_path = which('eeglab.m');
+                [obj.eeglab_path,~,~] = fileparts(obj.eeglab_path);
+            else
+                obj.eeglab_path = input('pls insert your full eeglab folder path, for example - "C:\\Users\\eeglab2021.1": ');
+            end
+            if exist('LabRecorder.exe', 'file')
+                obj.lab_recorder_path = which('LabRecorder.exe');
+                [obj.lab_recorder_path,~,~] = fileparts(obj.lab_recorder_path);
+            else
+                obj.lab_recorder_path = input('pls insert your full lab recorder folder path, for example - "C:\\Users\\LabRecorder": ');
+            end
+            if exist('lsl_loadlib.m', 'file')
+                obj.liblsls_path = which('lsl_loadlib.m');
+                [obj.liblsls_path,~,~] = fileparts(obj.liblsls_path);
+            else
+                obj.liblsls_path = input('pls insert your full liblsl folder path, for example - "C:\\Users\\liblsl-Matlab": ');
+            end
+
+            obj.channel_loc_path = which('channel_loc.ced'); % chanel location file path  ##### not in use for now #####
+            [parent_file_path,~,~] = fileparts(which(mfilename)); % gets the parent folder of the current running code file
+            [obj.root_path,~,~] = fileparts(parent_file_path);
+        
+            obj.fix_class(); % see the function description below..
+        end
+
+        function fix_class(obj)
+            % this function merges classes with the same label and sorts the
+            % labels and the class names accordingly
+            % Inputs: 
+            %   obj - a constant object
+            % Outputs:
+            %   class_label - new sorted and unique labels array
+            %   class_name - new merged names for each label
+            new_labels = sort(unique(obj.class_label)); % get unique and sorted labels
+            new_name = cell(length(new_labels), 1); % initialize new cell to store new class names
+            for i = 1:length(new_labels)
+                new_name{i} = strjoin(obj.class_names(obj.class_label == new_labels(i)), ' + '); % concat joint class names
+            end
+            obj.class_names = new_name;            % replace old names with new names
+        end
+
+        function set_max_epochs(obj, num_epochs)
+            % set the object number of epochs to new value - num_epochs
+            obj.max_num_epochs = num_epochs;
+        end
+
+        function set_learn_rate_drop_period(obj, num_epochs)
+            % set the object learning rate drop perios to new value - num_epochs
+            obj.learn_rate_drop_period = num_epochs;
+        end        
+    end
+end

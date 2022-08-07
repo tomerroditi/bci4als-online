@@ -3,8 +3,8 @@ function script_setup()
 % chanels locations file, the root path of the project.
 
     % create a constant object
-    addpath(genpath('..\classes')); % add the root folder of the project to the search path
-    C = constants();
+    addpath(genpath('..\8.classes')); % add the root folder of the project to the search path
+    C = my_pipeline();
     
     % add relevant paths to the script
     warning('off'); % suppress a warning about function names conflicts (there is nothing to do with it...)

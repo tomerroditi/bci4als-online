@@ -1,42 +1,37 @@
-function [data, segments, labels, sup_vec, seg_time_sampled] = segment_continouos(data, events,...
-    segment_duration, sequence_len, sequence_overlap, overlap_duration, class_thres, constants)
+function [data, segments, labels, sup_vec, seg_time_sampled] = segment_continouos(data, events, my_pipeline)
 % this function creates a continouos segmentation of the raw data
 % Input:
 %   data: a 2D matrix containing the raw data from the EEG recording.
 %   events: a structure containing the info about the events/markers of the
 %           EEG recording.
-%   segment_duration: the duration of each segment in seconds.
-%   sequence_len: number of windows in each sequence.
-%   sequence_overlap: overlap in seconds between following windows in a
-%                     sequence.
-%   overlap_duration: the overlap duration between following
-%                     segmentations in seconds.
-%   class_thres: a threshold for the classification of every segment,
-%                int between [0,1].
-%   constants: a Constants object containing some constants for the
-%              segmentation process.
+%   my_pipeline: a my_pipeline object with the segmentation parameters
 %
 % Output:
+%   data: a 2D matrix containing the raw data from the EEG recording
+%         without the data before the start marker and after the end marker
 %   segments: a 3D matrix of the segmented data, dimentions are -
-%             [trials, channels, time (sampled data)].
+%             [channels, time (sampled data), trials (batch)].
 %   labels: labels vector for the segmented data
 %   sup_vec: a vector of indications of the class presented in each
 %            timestemp
 %
 
-start_buff = constants.buffer_start;
-end_buff = constants.buffer_end;
-classes_all      = constants.class_names;
-classes_use      = constants.class_name_model;
-class_label      = constants.class_label;
-classes_markers  = num2str(constants.class_marker, '%#.16g');     
-start_rec_mark   = num2str(constants.start_recordings, '%#.16g');   % start recording marker
-end_rec_mark     = num2str(constants.end_recording, '%#.16g');      % end recording marker
-
+start_buff       = my_pipeline.buffer_start;
+end_buff         = my_pipeline.buffer_end;
+class_label      = my_pipeline.class_label;
+class_marker     = my_pipeline.class_marker;     
+start_rec_mark   = my_pipeline.start_recordings;   % start recording marker
+end_rec_mark     = my_pipeline.end_recording;      % end recording marker
+segment_duration = my_pipeline.seg_dur;
+sequence_len     = my_pipeline.sequence_len;
+sequence_overlap = my_pipeline.sequence_overlap;
+overlap_duration = my_pipeline.overlap;
+class_thres      = my_pipeline.threshold;
+ 
 % extract the times events and data from EEGstruc
 events = squeeze(struct2cell(events)).';
 marker_times = cell2mat(events(:,2));    % note that the time is the number of sampled values till the marker
-marker_sign = cell2mat(events(:,1));
+marker_sign = events(:,1);
 
 % make some verifications on the markers
 start_rec_marker_idx = strcmp(events(:,1), start_rec_mark);
@@ -57,7 +52,7 @@ data = data(:, start_time:end_time); % remove data
 marker_times = marker_times - start_time + 1; % adjust the marker times 
 
 % define segmentation parameters
-Fs = constants.sample_rate;          % sample rate
+Fs = my_pipeline.sample_rate;          % sample rate
 seq_step_size = floor(segment_duration*Fs - sequence_overlap*Fs);
 segment_size = floor(segment_duration*Fs + start_buff + end_buff + seq_step_size*(sequence_len - 1));      % segments size
 overlap_size = floor(overlap_duration*Fs +start_buff + end_buff + seq_step_size*(sequence_len - 1));      % overlap between every 2 segments
@@ -71,23 +66,16 @@ labels = zeros(num_segments, 1);
 
 % create a support vector containing the movement class in each timestamp
 sup_vec = zeros(1,size(data,2));
-classes_markers = mat2cell(classes_markers, ones(size(classes_markers,1),1));
-marker_sign = mat2cell(marker_sign, ones(size(marker_sign,1),1));
-
 for j = 1:size(data,2)
     last_markers = find(marker_times <= j);
-    if isempty(last_markers) % idle before something happens
-        sup_vec(j) = 1;
-    elseif ismember(marker_sign{last_markers(end)}, classes_markers) % classify according to last marker 
-        curr_class_name = classes_all(strcmp(marker_sign{last_markers(end)}, classes_markers));
-        for i = 1:length(classes_use)
-            if any(strcmp(strip(split(classes_use(i), '+')), curr_class_name))
-                sup_vec(j) = class_label(i);
+    sup_vec(j) = 1; % assume its idle, if not it will be replaced
+    if ~isempty(last_markers) % idle before something happens
+        for k = 1:length(class_marker)
+            if ismember(marker_sign{last_markers(end)}, class_marker{k}) % classify according to last marker 
+                sup_vec(j) = class_label(k);
                 break
             end
         end
-    else
-        sup_vec(j) = 1;
     end
 end
 
@@ -95,7 +83,7 @@ end
 % filter the data to remove drifts and biases, so we could set a common
 % threshold to all recordings for finding corapted segments. we add zeros
 % to keep both signals align with each other (the segments are not filtered!)
-filtered_data = cat(2,zeros(size(data,1), start_buff), filter_segments(data, 'continuous', constants));
+filtered_data = cat(2,zeros(size(data,1), start_buff), filter_segments(data, my_pipeline));
 times = (0:(size(data,2) - 1))./Fs;
 seg_time_sampled = zeros(1,num_segments);
 start_idx = 1;
@@ -114,11 +102,12 @@ for i = 1:num_segments
         % some code to help validate the rejected segments - remove "%"
         % mark and place a pause on the 'continue' line
 %         subplot(3,1,1)
-%         plot(filtered_data(:,seg_idx(1) + start_buff: seg_idx(end) - end_buff).')
+%         plot(filtered_data(:,seg_idx(1) + start_buff: seg_idx(end) - end_buff).'); title('rejected segment');
 %         subplot(3,1,2)
-%         plot(filtered_data(:,seg_idx(1) + start_buff - Fs*5: seg_idx(end) - end_buff + Fs*2).');
+%         plot(filtered_data(:,seg_idx(1) + start_buff - Fs*5: seg_idx(end) - end_buff + Fs*2).'); title('zoom out from the segment, area for checking abnormalities');
+%         xline([Fs*5, Fs*5 + length(seg_idx(1) + start_buff: seg_idx(end) - end_buff)]);
 %         subplot(3,1,3)
-%         plot(filtered_data.')
+%         plot(filtered_data.'); title('complete recording');
 %         xline([seg_idx(1) + start_buff - Fs*5,seg_idx(end) - end_buff + Fs*2])
         continue
     else
@@ -138,29 +127,16 @@ for i = 1:num_segments
         % some code to help validate the rejected segments - remove "%"
         % mark and place a pause on the 'continue' line
 %             subplot(3,1,1)
-%             plot(filtered_data(:,seg_idx(1) + start_buff: seg_idx(end) - end_buff).')
+%             plot(filtered_data(:,seg_idx(1) + start_buff: seg_idx(end) - end_buff).'); title('rejected segment');
 %             subplot(3,1,2)
-%             plot(filtered_data(:,seg_idx(1) + start_buff - Fs*5: seg_idx(end) - end_buff + Fs*2).');
+%             plot(filtered_data(:,seg_idx(1) + start_buff - Fs*5: seg_idx(end) - end_buff + Fs*2).'); title('zoom out from the segment, area for checking abnormalities');
+%             xline([Fs*5, Fs*5 + length(seg_idx(1) + start_buff: seg_idx(end) - end_buff)]);
 %             subplot(3,1,3)
-%             plot(filtered_data.')
+%             plot(filtered_data.'); title('complete recording')
 %             xline([seg_idx(1) + start_buff - Fs*5,seg_idx(end) - end_buff + Fs*2])
             continue
         end
     end
-%     else
-%         fourier = abs(fft(filtered_data(:,seg_idx), [], 2))./segment_size;
-%         subplot(2,1,1)
-%         plot(fourier.')
-%         subplot(2,1,2)
-%         plot(filtered_data(:,seg_idx).')
-%         pause(0.8)
-%         above_thresh = fourier > 0.25;
-%         above_thresh = sum(above_thresh, 2) ~= 0;
-%         if sum(above_thresh) ~= 0 && sum(above_thresh) <= 4 % reject only segments where several electrodes are noisy,
-%         % sometimes we might get high amplitudes due to physiological noise like blinking
-%             labels(i) = -1;
-%             continue
-%         end
 
     % find the ith label
     tags = sup_vec(seg_idx);

@@ -17,16 +17,6 @@ sequence_len = options.sequence_len; % length of a sequence to enter in sequence
 step_size = seg_dur - overlap;
 seq_step_size = seg_dur - sequence_overlap;
 
-%% perform a quick finetuning before starting a session if you desire
-answer = input('would you like to fine tune the model with new data? type "yes"/"no": ');
-if strcmpi(answer, 'yes')
-    disp('enter the desired path to save the recording in the Lab Recorder Gui, change the file name to EEG.xdf!');
-    system([constants.lab_recorder_path '\LabRecorder.exe'])
-    record_me()
-    path = uigetdir(constants.root_path, 'pls select the folder you saved the new recording to');
-    model = fine_tune_model(model, path);
-end
-
 %% Lab Streaming Layer Init
 lib = lsl_loadlib();
 % resolve a stream...
@@ -49,12 +39,25 @@ while t_1.TasksExecuted < 5
     end
 end
 clear t_1 % its a good practice to delete timers after calling them
+
+%% perform a quick finetuning before starting a session if you desire
+answer = input('would you like to fine tune the model with new data? type "yes"/"no": ');
+if strcmpi(answer, 'yes')
+    disp('enter the desired path to save the recording in the Lab Recorder Gui, change the file name to EEG.xdf!');
+    system([constants.lab_recorder_path '\LabRecorder.exe'])
+    record_me()
+    path = uigetdir(constants.root_path, 'pls select the folder you saved the new recording to');
+    model = fine_tune_model(model, path);
+end
+
 %% extract data from stream, preprocess, classify and execute actions
 data_size = floor(seg_dur*Fs + seq_step_size*Fs*(sequence_len - 1) + start_buff + end_buff);
 % set a timer object and start the bci program!
 t = timer('TimerFcn',"my_bci(inlet, bci_model, options, constants, data_size)", 'Period', step_size,... 
-    'ExecutionMode', 'fixedRate', 'TasksToExecute', 1000, 'BusyMode', 'drop');
+    'ExecutionMode', 'fixedRate', 'TasksToExecute', 10000, 'BusyMode', 'drop');
 start(t);
+input('press any button to stop the BCI')
+stop(t)
 
 
 

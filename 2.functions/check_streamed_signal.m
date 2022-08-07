@@ -1,15 +1,15 @@
-function flag = check_streamed_signal(inlet, options, constants)
+function flag = check_streamed_signal(inlet, my_pipeline)
 
 
 persistent data segment_size
  
 if isempty(data)
-    Fs = constants.sample_rate;          % sample rate
-    segment_duration = options.seg_dur;
-    sequence_overlap = options.sequence_overlap;
+    Fs = my_pipeline.sample_rate;          % sample rate
+    segment_duration = my_pipeline.seg_dur;
+    sequence_overlap = my_pipeline.sequence_overlap;
     seq_step_size = floor(segment_duration*Fs - sequence_overlap*Fs);
-    segment_size = floor(segment_duration*Fs + constants.buffer_start + constants.buffer_end...
-        + seq_step_size*(options.sequence_len - 1)); 
+    segment_size = floor(segment_duration*Fs + my_pipeline.buffer_start + my_pipeline.buffer_end...
+        + seq_step_size*(my_pipeline.sequence_len - 1)); 
     data = [];
 end
 
@@ -17,7 +17,7 @@ end
 while size(data,2) < segment_size
     pause(5)
     chunk = inlet.pull_chunk();
-    chunk(constants.xdf_removed_chan,:) = [];
+    chunk(my_pipeline.xdf_removed_chan,:) = [];
     data = cat(2, data, chunk);
 end
 
@@ -26,17 +26,17 @@ disp(size(data,2) - segment_size + 1)
 segments = data(:,end - segment_size + 1:end);
 
 % filter the data
-segments = filter_segments(segments, options.cont_or_disc, constants);
+segments = filter_segments(segments, my_pipeline.cont_or_disc, my_pipeline);
 
 % create the sequence 
-segments = create_sequence(segments, options);
+segments = create_sequence(segments, my_pipeline);
 
 % normalize the data
-segments = norm_eeg(segments, constants.quantiles);
+segments = norm_eeg(segments, my_pipeline.quantiles);
 
 % check the data fft
 fourier = abs(fft(segments(:,:,1,1,1), [], 2))./size(segments, 2);
-freq = linspace(0, constants.sample_rate/2, floor(size(fourier, 2)/2) + 1);
+freq = linspace(0, my_pipeline.sample_rate/2, floor(size(fourier, 2)/2) + 1);
 fourier = fourier(:,1:floor(size(fourier,2)/2) + 1);
 
 % insert here conditions on the FT of the signal
@@ -73,7 +73,7 @@ end
 % from the data that the model was trained on, if the distance is larger
 % than some value its a good indication for corrupted signal 
 
-data(:,1:constants.sample_rate*2) = [];
+data(:,1:my_pipeline.sample_rate*2) = [];
 flag = false;
 end
 
