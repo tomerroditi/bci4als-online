@@ -1,9 +1,10 @@
 # BCI4ALS - Team Omri
 
-current offline top results:
+## current offline top results:
 - model accuracy: train - 0.91 , val - 0.89
 - gesture detection accuracy: train - 0.99, val - 1 
 
+## general notes
 - This is the code repository for the BCI4ALS - TAU, team omri, with reimagined headset 72 from Or Rabani.
 - You are free to use, change, adapt and so on - but please cite properly if published.
 - We assume you have already set up a Matlab environment with psychtoolbox libLSL, OpenBCI, EEGLab with ERPLAB, AAR & loadXDF plugins installed.
