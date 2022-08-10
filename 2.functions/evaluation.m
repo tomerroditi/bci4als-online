@@ -48,7 +48,7 @@ else
     scores = predict(model, data_store);
 end
 
-class_name = bci_model.my_pipeline.class_name_model;  % the classes we are ussing to train the model
+class_name = bci_model.my_pipeline.class_names;  % the classes we are ussing to train the model
 class_label = bci_model.my_pipeline.class_label; % the label we gave to each class
 
 % find idle location

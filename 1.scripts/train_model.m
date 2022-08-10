@@ -22,9 +22,10 @@ recorders = {'tomer', 'omri', 'nitay','02','03','04','05','06','07','08','09','1
 % train_folders_num = {[], [], [], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], []}; % recordings numbers for train data - make sure that they exist
 % val_folders_num =  {[], [], [], [], [], [], [], [], [], [], [], [], [2:5]}; % recordings numbers for validation data- make sure that they exist
 
-train_folders_num = {[3:6], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for train data - make sure that they exist
+train_folders_num = {[3,5,6,8,9,10,12,13,15], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for train data - make sure that they exist
 val_folders_num =  {[11], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for validation data- make sure that they exist
-pipeline = my_pipeline("seg_dur", 3, "overlap", 2.5,"class_label", [1;2;2], 'cont_or_disc', 'discrete');
+
+pipeline = my_pipeline("seg_dur", 4, "overlap", 3.5,"model_algo", 'EEGNet_lstm', 'sequence_len', 4, 'sequence_overlap', 2);
 
 %% preprocess the data into train, test and validation sets
 train = multi_recording(recorders, train_folders_num, pipeline);
@@ -42,7 +43,7 @@ model.classify_gestures(train, plot = true, plot_title = 'train');
 model.classify_gestures(val, plot = true, plot_title = 'validation'); 
 
 %% model explainability
-model.EEGNet_explain();
+% model.EEGNet_explain();
 
 %% save the model its settings and the recordings names that were used to create it
 path = uigetdir();

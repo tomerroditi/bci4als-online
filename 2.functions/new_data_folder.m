@@ -6,7 +6,7 @@ function big_data_root_path = new_data_folder()
         fold_name = num2str(1, '%03.f');
     else
         names = extractfield(listing, 'name');
-        names(strcmp(names,'.') | strcmp(names,'..')) = [];
+        names(strcmp(names,'.') | strcmp(names,'..') | strcmp(names, 'readme.txt')) = [];
         names = cellfun(@str2num, names); % convert str to double
         if ~isempty(names)
             fold_name = num2str(max(names) + 1, '%03.f');

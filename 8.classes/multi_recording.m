@@ -171,6 +171,11 @@ classdef multi_recording < handle & matlab.mixin.Copyable & recording
                 obj.data_store = fileDatastore(file_set, "ReadFcn", @load_file, 'UniformRead',true, ...
                     "FileExtensions", ".mat");
             end
+            
+            % the loading file function to create the big data datastore
+            function [data]  = load_file(file)
+                load(file); % load the data variable (a cell array)
+            end            
         end
 
         % oversample data
@@ -241,7 +246,7 @@ classdef multi_recording < handle & matlab.mixin.Copyable & recording
                     [pxx_filt, freq_1] = pwelch(obj.raw_data_filt(:,obj.rec_idx{i,4}).', obj.my_pipeline.sample_rate);
                     subplot(num_rows,3,i);
                     plot(freq_1(1:ceil(length(pxx_filt)/2)).*obj.my_pipeline.sample_rate./pi, pxx_filt(1:ceil(length(pxx_filt)/2),:).');
-                    xlabel('frequency [HZ]'); ylabel('power [DB/HZ]');
+                    xlabel('frequency [HZ]'); ylabel('power [DB/HZ]'); title(obj.Name{i});
                 end
                 legend(legend_names);
             end
@@ -307,9 +312,4 @@ classdef multi_recording < handle & matlab.mixin.Copyable & recording
             end
         end
     end
-end
-
-% the loading file function to create the big data datastore
-function [data]  = load_file(file)
-    load(file); % load the data variable (a cell array)
 end

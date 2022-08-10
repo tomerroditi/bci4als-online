@@ -23,6 +23,7 @@ if ismember([algo '.m'], DL_pipe_names) % DL models
     selected_feat_idx = []; % we currently use none feature NN
     DL_flag = true;
 else % classic ml models
+    error('classic ml is not supported yet, pls use a valid DL pipeline name')
     % convert data store into data set - not supporting big data!
     [train, train_labels] = ds2set(train_ds);
     [val, val_labels] = ds2set(val_ds);

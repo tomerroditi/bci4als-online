@@ -18,9 +18,9 @@ function eeg_stft = EEG_stft(train_ds, val_ds, my_pipeline)
 evalc('gpuDevice(1)');
 
 % extract the input dimentions for the input layer
-input_samples = readall(train_ds);
+input_samples = read(train_ds);
 input_size = size(input_samples{1,1});
-num_classes = length(unique(my_pipeline.class_label));
+num_classes =  numel(categories(input_samples{1,2}));
 
 % correct the 'input_size' dimentions to match the input layer of image input 
 % layer - hXwXcXn (height,width,channels), since we always has 1 channel it
@@ -31,7 +31,7 @@ input_size = [input_size, 1];
 layers_stft = [
     imageInputLayer(input_size, 'Normalization','none')
     PermuteStftLayer(Name = 'Permute')
-    stftLayer('Window', rectwin(128), 'OverlapLength', 100,"OutputMode", "spatial", "WeightLearnRateFactor", 0)
+    stftLayer('Window', rectwin(128), 'OverlapLength', 64,"OutputMode", "spatial", "WeightLearnRateFactor", 0)
     dropoutLayer(0.25)
     groupedConvolution2dLayer([20 4], 2, 'channel-wise', 'Stride', [10 2], 'Padding', 'same') % window_size/2 + 1 = N_DFT_points
     batchNormalizationLayer()

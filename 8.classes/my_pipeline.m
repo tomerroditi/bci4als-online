@@ -27,8 +27,8 @@ classdef my_pipeline < handle
         pre_start         = 0.5; % duration in seconds to include in segments before the start marker
         post_start        = 1.5; % duration in seconds to include in segments after the start marker
             % continuous only
-        seg_dur           = 2;   % duration in seconds of each segment
-        overlap           = 0;   % duration in seconds of following segments overlapping
+        seg_dur           = 4;   % duration in seconds of each segment
+        overlap           = 3.5; % duration in seconds of following segments overlapping
         sequence_len      = 1;   % number of segments in a sequence (for sequential DL models)
         sequence_overlap  = 1;   % duration in seconds of overlap between following segments in a sequence
         threshold         = 0.7; % threshold for labeling - percentage of the segment containing the class (only values from 0-1 range)
@@ -68,21 +68,19 @@ classdef my_pipeline < handle
         electrode_num     = [1,2,3,4,5,6,7,8,9,10,11]; % electrode number
         electrode_loc     = {'C3','C4','Cz','FC1','FC2','FC5','FC6','CP1','CP2','CP5','CP6'}; % electrodes location respectivly to electrode num
 
+        % DL model training options parameters - used in the DL pipelines
+        verbose_freq           = 100;
+        max_epochs             = 50;
+        mini_batch_size        = 300;
+        validation_freq        = 100;
+        learn_rate_drop_period = 45;
+
         % usefull paths
         root_path
         eeglab_path
         lab_recorder_path
         liblsls_path
         channel_loc_path
-    end
-
-    properties (Access = public)
-        % DL model training options parameters - used in the DL pipelines
-        verbose_freq           = 100;
-        max_epochs             = 25;
-        mini_batch_size        = 1000;
-        validation_freq        = 100;
-        learn_rate_drop_period = 20;
     end
 
     methods 

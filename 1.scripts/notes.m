@@ -7,7 +7,6 @@
 % 3) test the model in online sessions
 % 5) fix the model explainability function to auto detect the relevant
 %    layers
-% 11) eddit scripts to be aligned with the changes in the objects
 
 
 %% general notes
@@ -15,12 +14,12 @@
 %   protocol with random time difference between gestures - DONE!
 
 % bad recordings from tomer - 1 (low amp in low freq),2 (effective sample rate is ~90 instead of 125), 8(noise around 31.25 HZ)
-% 7,14 (one of the channels is completly corrupted), 15 (one channel has low amp in low freq)
+% 7,14 (one of the channels is completly corrupted and low sample rate as well), 15 (one channel has low amp in low freq)
 
 % only probabilistic models are suited for this code e.i trees, logistic
 % regression, NN etc.. 
 
-% when constructing a feature extraction function, consider dimention 1 as
+% when constructing a feature extraction function, consider dimention 5 as
 % trials and dimention 2 as features in the output matrix
 
 %% EEG recording instructures (just some side notes for me)

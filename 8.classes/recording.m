@@ -104,6 +104,54 @@ classdef recording < handle & matlab.mixin.Copyable
             % and labels so we'll have an even labels distribution 
             obj.features = resample_data(obj.features, obj.labels);
             [obj.segments, obj.labels] = resample_data(obj.segments, obj.labels);
+
+            function [data, labels, rsmpl_segments, rsmpl_labels] = resample_data(data, labels)
+                    % this function resamples each class by the factors in rsmpl_size. each
+                    % class resample factor is stored in rsmpl_size in the index which is
+                    % equall to the class number.
+                    % Inputs:
+                    %   data: an array containing the data to resample, the kast dimention
+                    %             should be the trails dimentions
+                    %   labels: the true class of the data
+                    %   print: bool, specify if you want to display the new data distribution
+                    %
+                    % Outputs:
+                    %   data: an array containing the resampled data
+                    %   labels: labels of the resampled data
+                    %
+                    
+                    % return empty arrays if the input is empty
+                    if isempty(data)
+                        data = []; labels = [];
+                        rsmpl_segments = []; rsmpl_labels = [];
+                        return
+                    end
+                    
+                    % find the label that apears the most
+                    unique_labels = unique(labels);
+                    count = 0;
+                    for i = 1:length(unique_labels)
+                        if sum(labels == unique_labels(i)) > count
+                            most_freq_label = unique_labels(i);
+                            count = sum(labels == unique_labels(i));
+                        end
+                    end
+                    
+                    % find each class indices and resample the data - only in the last dimention
+                    S.subs = repmat({':'},1,ndims(data)); S.type = '()';
+                    rsmpl_segments = []; rsmpl_labels = [];
+                    for i = 1:length(unique_labels)
+                        curr_label = unique_labels(i);
+                        S.subs{ndims(data)} = find(~(labels == curr_label));
+                        curr_seg = subsasgn(data, S, []); % reject all indices of other labels
+                        ratio = round(sum(labels == most_freq_label)/sum(labels == curr_label)); % ratio to the largest label
+                        rsmpl_segments = cat(ndims(data), rsmpl_segments, repmat(curr_seg, 1, 1, 1, 1, ratio - 1));
+                        rsmpl_labels = cat(1, rsmpl_labels, ones(size(curr_seg, ndims(data))*(ratio - 1),1).*curr_label);
+                    end
+                    % concat original data\labels with resampled data\labels
+                    data = cat(ndims(data), data, rsmpl_segments);
+                    labels = cat(1, labels, rsmpl_labels);
+                end
         end
 
         % remove oversampled segments
@@ -135,6 +183,35 @@ classdef recording < handle & matlab.mixin.Copyable
                     obj.data_store = set2ds(obj.features, obj.labels, obj.my_pipeline);
                 end
             end
+
+            function ds = set2ds(segments, labels, my_pipeline)
+                    % this function creates a data store from a data set
+                    %
+                    % Inputs:
+                    %   - segments: a 5D aarray containing the segmented eeg data
+                    %   - labels: a 1D array containing the labels of the segmented eeg data
+                    %   - constants: a constants object
+                    %
+                    % Outputs:
+                    %   - ds: a data store containing 'segments' and 'labels'
+                    
+                    if isempty(segments)
+                        ds = [];
+                        return 
+                    end
+                    
+                    % create cells of the labels - notice we need to feed the datastore with
+                    % categorical instead of numeric labels
+                    labels = addcats(categorical(labels), arrayfun(@num2str, my_pipeline.class_label, 'UniformOutput', false)); % add categories that might be missing
+                    labels = squeeze(num2cell(reordercats(labels), 2));
+                    % create cells of segments
+                    segments = squeeze(num2cell(segments, [1,2,3,4]));
+                    
+                    % define the datastores and their read size - for best runtime performance 
+                    % configure read size to be the same as the minibatch size of the network
+                    read_size = my_pipeline.mini_batch_size;
+                    ds = arrayDatastore([segments labels], 'ReadSize', read_size, 'IterationDimension', 1, 'OutputType', 'same');
+                    end
         end
    
         % data augmentation
@@ -157,6 +234,49 @@ classdef recording < handle & matlab.mixin.Copyable
                 my_wgn_p = obj.my_pipeline.wgn_p;
                 obj.data_store = transform(obj.data_store, @augment_data);
             end
+
+            function aug_data = augment_data(datastore)
+                    % this function creates an augmented data from the processed data the
+                    % NN recieves
+                    %
+                    % Inputs:
+                    %   datastore: a cell array containing the data in the first
+                    %             column and the labels (as categorical objects) in the second
+                    %             column
+                    %
+                    % outputs:
+                    %   aug_data: a cell array containing the augmented data in the first
+                    %             column and the labels (as categorical objects) in the second
+                    %             column
+                                        
+                    % seperate data and labels
+                    data = datastore(:,1);
+                    labels = datastore(:,2); %#ok<PROP> 
+                    
+                    N = size(data,1); % extract number of samples
+                    
+                    % aplly x flip with P probability 
+                    P = my_x_flip_p;
+                    indices_flip = randperm(N, round(N*P));
+                    data(indices_flip) = cellfun(@(X) flip(X,2), data(indices_flip), "UniformOutput", false);
+                    
+                    % aplly white gaussian noise with P probability
+                    P = my_wgn_p;
+                    indices_noise = randperm(N, round(N*P));
+                    data(indices_noise) = cellfun(@(X) awgn_func(X, 20), data(indices_noise), "UniformOutput", false);
+                    
+                    aug_data = [data labels]; %#ok<PROP>
+
+                        function x = awgn_func(x, snr)
+                            for i = 1:size(x,3)
+                                for j = 1:size(x,4)
+                                    temp_x = x(:,:,i,j).'; 
+                                    temp_x = awgn(temp_x, snr, 'measured');
+                                    x(:,:,i,j) = temp_x.';
+                                end
+                            end
+                        end
+                end
         end
 
         % remove augmentations from data store

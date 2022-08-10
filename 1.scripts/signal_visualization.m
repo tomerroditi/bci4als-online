@@ -9,7 +9,7 @@ script_setup()
 
 %% select folders to aggregate data from
 recorders = {'tomer', 'omri', 'nitay', 'itay','02','03','04','05','06','07','08','09','10','12'}; % people we got their recordings
-folders_num = {[], [1:11], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers - make sure that they exist
+folders_num = {[3:15], [], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers - make sure that they exist
 
 all_rec = multi_recording(recorders,folders_num);
 all_rec.plot_data(fft = true, raw = true, filt = true);

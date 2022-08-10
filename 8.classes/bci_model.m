@@ -18,7 +18,7 @@ classdef bci_model < handle & matlab.mixin.Copyable
         function obj = bci_model(train, val)
             % train/val/test - a recording object
             obj.train = train; obj.train.group = 'train';
-            obj.val = val; obj.val.group = 'val';
+            obj.val = val; obj.val.group = 'validation';
             obj.my_pipeline = train.my_pipeline;
 
             obj.train.rsmpl_data();
@@ -117,7 +117,7 @@ classdef bci_model < handle & matlab.mixin.Copyable
             elseif isempty(recording.data_store)
                 recording.create_ds();
             end
-            [predictions,~,CM] = evaluation(obj, recording.data_store, recording.labels, "thres_C1", obj.threshold);
+            [predictions,~,CM] = evaluation(obj, recording.data_store, recording.labels, "thres_C1", obj.threshold, "print", args.plot, "CM_title", args.plot_title);
             if args.plot
                 recording.visualize(predictions, title = args.plot_title)
             end
@@ -220,29 +220,25 @@ classdef bci_model < handle & matlab.mixin.Copyable
         end
 
         %% save and load models
-        function saved_obj = save(obj, path, args)
+        function  save(obj, path, args)
         % this function saves the model without the recordings data,
         % instead we save each recordings names to save memory
         % Inputs:
         %   path - a folder path to save the model into
-        % Output:
-        %   saved_obj - the saved object
             arguments
                 obj
                 path
                 args.file_name = 'bci_model';
             end
             if path == 0
-                saved_obj = [];
                 return
             end
             % we save only the names so the saved obj will take less memory
-            saved_obj = copy(obj);
-            saved_obj.train = saved_obj.train.Name;
-            saved_obj.val = saved_obj.val.Name;
+            obj.train = obj.train.Name;
+            obj.val = obj.val.Name;
             % save the object under the name 'model'
             if ~isempty(path)
-                S.('model') = saved_obj;
+                S.('model') = obj;
                 save(fullfile(path, args.file_name), "-struct", 'S');
             end
         end

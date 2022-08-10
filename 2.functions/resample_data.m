@@ -41,7 +41,7 @@ for i = 1:length(unique_labels)
     rsmpl_segments = cat(ndims(data), rsmpl_segments, repmat(curr_seg, 1, 1, 1, 1, ratio - 1));
     rsmpl_labels = cat(1, rsmpl_labels, ones(size(curr_seg, ndims(data))*(ratio - 1),1).*curr_label);
 end
-% concate original data\labels with resampled data\labels
+% concat original data\labels with resampled data\labels
 data = cat(ndims(data), data, rsmpl_segments);
 labels = cat(1, labels, rsmpl_labels);
 end

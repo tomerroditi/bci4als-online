@@ -12,13 +12,13 @@ path = uigetdir;
 
 %% select folders to aggregate data from
 recorders = {'tomer', 'omri', 'nitay'}; % people we got their recordings
-train_folders_num = {[5:6], [], []}; % recordings numbers for train data - make sure that they exist
+train_folders_num = {[3:6,9,10,12,13], [], []}; % recordings numbers for train data - make sure that they exist
 val_folders_num =  {[11], [], []}; % recordings numbers for validation data- make sure that they exist
 
 %% create all the desired pipelines for training - modify this as you wish
-seg_dur = [2.5];
-not_overlaped = [1.5, 1];
-threshold = [0.6, 0.65];
+seg_dur = [2, 2.5, 3, 3.5];
+not_overlaped = [0.5, 1, 1.5];
+threshold = [0.65, 0.7, 0.75, 0.8];
 
 pipelines = cell(1,length(seg_dur)*length(not_overlaped)*length(threshold));
 options_cell = cell(1,length(seg_dur)*length(not_overlaped)*length(threshold));
@@ -41,7 +41,6 @@ for i = 1:length(seg_dur)
 end
 
 %% train models with different options
-models = cell(1,length(pipelines));
 for k = 1:length(pipelines)
     % preprocess the data into train and validation sets
     train = multi_recording(recorders, train_folders_num, pipelines{k});

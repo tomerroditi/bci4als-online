@@ -18,7 +18,7 @@ function eegnet_lstm_stft = EEGNet_lstm_stft(train_ds, val_ds, my_pipeline)
 % extract the input dimentions for the input layer
 input_samples = read(train_ds);
 input_size = size(input_samples{1,1});
-num_classes = length(unique(cellfun(@(X)double(X), input_samples(:,2))));
+num_classes =  numel(categories(input_samples{1,2}));
 
 % input_size = [11, 300, 1, 4];
 % num_classes = 3;
