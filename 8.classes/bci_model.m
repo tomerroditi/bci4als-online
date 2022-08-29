@@ -91,10 +91,10 @@ classdef bci_model < handle & matlab.mixin.Copyable
             % Outputs:
             %   new_thresh - the new threshold of the model
 
-            if nargin == 1
-                obj.threshold = crit_threshold;
+            if nargin == 2
+                obj.threshold = crit_thresh;
                 new_thresh = crit_thresh;
-            elseif nargin ==2
+            elseif nargin == 3
                 [~, new_thresh] = evaluation(obj, obj.train.data_store, obj.train.my_pipeline, ...
                     criterion = crit, criterion_thresh = crit_thresh); 
                 obj.threshold = new_thresh;
@@ -132,6 +132,12 @@ classdef bci_model < handle & matlab.mixin.Copyable
                 args.plot = false;
                 args.plot_title = '';
             end
+            if ~isa(recording, 'recording')
+                error('bci model objects can only classify recording objects')
+            elseif isempty(recording)
+                accuracy = []; missed_gest = []; mean_delay = []; gest_CM = []; predictions = [];
+                return
+            end
             if ~isfield(args, 'predictions')
                 predictions = obj.classify(recording, plot = args.plot, plot_title = args.plot_title);
             else
@@ -144,10 +150,10 @@ classdef bci_model < handle & matlab.mixin.Copyable
         %% model visualizations
         % activation layer outputs
         function activation_layer_output(obj, recording)
-            % this function is used to calculate and visualize the model 'activation'
-            % layer outputs and hold it on obj.fc_act. you need to name a
-            % layer as 'activations' when constructing the DL pipeline in 
-            % order to use this function.
+        % this function is used to calculate and visualize the model 'activation'
+        % layer outputs and hold it on obj.fc_act. you need to name a
+        % layer as 'activations' when constructing the DL pipeline in 
+        % order to use this function.
             if obj.DL_flag
                 % find the activation layer index
                 flag = 0;
@@ -177,15 +183,14 @@ classdef bci_model < handle & matlab.mixin.Copyable
 
         % model output 
         function model_output(obj, recording)
-            % this function is used to calculate and visualize the model output - scores,
-            % and holds it in obj.mdl_output
+        % this function is used to calculate and visualize the model output - scores,
+        % and holds it in obj.mdl_output
             mdl_output = predict(obj.model, recording.data_store);
             if size(mdl_output,2) > 3
                 mdl_output = tsne(mdl_output, 'Algorithm', 'exact', 'Distance', 'euclidean', 'NumDimensions', 3);
             end
             scatter_3D(mdl_output, recording);
         end
-
 
         %% model explainability
         function EEGNet_explain(obj)
@@ -194,8 +199,9 @@ classdef bci_model < handle & matlab.mixin.Copyable
             end
         end
 
-        %% transfer learning
+        %% transfer learning and fine tuning
         function new_model = transfer_learning(obj, train, val)
+
             pipeline = obj.my_pipeline;
             train.rsmpl_data();
             train.create_ds(); val.create_ds();
@@ -218,6 +224,33 @@ classdef bci_model < handle & matlab.mixin.Copyable
             new_model.find_optimal_values();
 
         end
+
+        function new_thresh = fine_tune_model(obj, path)           
+            train_fine = recording(path, obj.my_pipeline);
+            train_fine.rsmpl_data()
+            train_fine.create_ds();
+            train_fine.augment()
+            
+            % check data distribution
+            disp('fine tuning training data distribution'); tabulate(train_fine.labels)
+            
+            % train the model on the new data
+            training_options = trainingOptions('adam', ...
+                'Verbose', true, ...
+                'VerboseFrequency', 10, ...
+                'MaxEpochs', 50, ...
+                'MiniBatchSize', obj.my_pipeline.mini_batch_size, ...  
+                'Shuffle','every-epoch', ...
+                'InitialLearnRate', 0.0001, ...
+                'OutputNetwork', 'last-iteration');
+            
+            obj.model = trainNetwork(train_fine.data_store, obj.model.Layers, training_options);
+            
+            % update the bci_model object model
+            [~, new_thresh] = evaluation(obj, train_fine.data_store, train_fine.labels, ...
+                            criterion = 'accu', criterion_thresh = 1, print = true);
+            obj.set_threshold(new_thresh)
+            end
 
         %% save and load models
         function  save(obj, path, args)
@@ -243,8 +276,6 @@ classdef bci_model < handle & matlab.mixin.Copyable
             end
         end
 
-        % retrieving data to loaded objects
-        % load data from files - use this if you loaded a saved bci_model to reconstruct its data
         function load_data(obj)
         % this function reconstruct a loaded model recordings data
             [recorders_t, num_t] = names2rec_num(obj.train);

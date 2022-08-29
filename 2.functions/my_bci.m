@@ -8,13 +8,13 @@ if isempty(data)
     predictions = ones(bci_model.conf_level,1);
     time_from_action = 0;
     labels = my_pipeline.class_label;
-    class_name = my_pipeline.class_name_model;
+    class_name = my_pipeline.class_names;
     idle_idx = strcmpi(class_name, 'Idle');
     disp('bci has started')
 end
 
 chunk = inlet.pull_chunk();
-chunk(my_pipeline.xdf_removed_chan,:) = [];
+chunk(my_pipeline.removed_chan,:) = [];
 data = [data, chunk];
 if size(data,2) < data_size
     return
@@ -37,34 +37,25 @@ if ~strcmp(my_pipeline.feat_alg, 'none')
 end
 
 % predict and label the current segment
-scores = predict(model, segments(:,:,:));
-curr_prediction = [];
-% idle classification
-for i = 1:length(labels)
-    if strcmpi(class_name{i}, 'Idle') && scores(i) >= bci_model.threshold
-        curr_prediction = labels(i);
-    end
-end
-% gesture classification
-if isempty(curr_prediction)
+scores = predict(bci_model.model, segments(:,:,:));
+if scores(idle_idx) >= bci_model.threshold
+    curr_prediction = labels(idle_idx);
+else
     temp_labels = labels(~idle_idx);
-    for i = 1:length(temp_labels)
-        [~, I] = max(scores, [], 2);
-        curr_prediction = temp_labels(I);
-    end
+    [~, I] = max(scores(~idle_idx), [], 2);
+    curr_prediction = temp_labels(I);
 end
 
 % action execution
-predictions = [predictions(2:end); curr_prediction];
-%     disp(predictions);
+predictions(1) = []; % erase oldest prediction
+predictions(end + 1) = curr_prediction; % insert new prediction
 curr_time = tic;
-for i = 1:length(labels)
-    if all(predictions == labels(i)) && (curr_time - time_from_action)/10^7 > bci_model.cool_time
-        disp(class_name{i})
-        time_from_action = tic;
-        % insert an action like yes\no sound here
-    end
+if length(unique(predictions)) == 1 && predictions(1) ~= 1 && (curr_time - time_from_action)/10^7 > bci_model.cool_time
+    disp(class_name{labels == predictions(1)});
+    time_from_action = tic;
+    % insert an action like yes\no sound here
 end
+
 % indicate if the model picked up a movement
 if any(predictions ~= labels(idle_idx))
     disp(predictions.')

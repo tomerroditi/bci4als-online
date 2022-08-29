@@ -25,7 +25,7 @@ disp('Open Lab Recorder & check for MarkerStream and EEG stream, start recording
 pause;                                  % Wait for experimenter to press a key
 
 %% Prepare markers to execute in each stimulation
-class_marker = repmat(class_marker, 1, num_trials); % duplicate labels according to number of trials
+class_marker = repmat(class_marker, num_trials, 1); % duplicate labels according to number of trials
 class_marker = class_marker(randperm(length(class_marker))); % randomize labels order
 
 %% Record Training Stage

@@ -9,8 +9,8 @@ classdef recording < handle & matlab.mixin.Copyable
         features                % extracted features
         labels                  % data labels
         supp_vec                % 2D row array containing each time point and its label
-        data_store              % a data store containing the segments and labels
         sample_time             % the time point that each segments ends in
+        data_store              % a data store containing the segments and labels
         my_pipeline             % the my_pipeline object of the recording
         file_type               % data file type - 'edf','xdf'
     end
@@ -19,8 +19,9 @@ classdef recording < handle & matlab.mixin.Copyable
         %% construct the object - load a file, segment and filter its data
         function obj = recording(file_path, my_pipeline)
             % inputs:
-            %   file_path - a path an EDF\XDF file of a recording
-            %   my_pipeline - a my pipeline object
+            %   file_path - a path of an EDF\XDF file of a recording session
+            %   my_pipeline (optional) - a my pipeline object, default is
+            %                            the default my pipeline object
             if nargin > 0 % support empty objects
                 if nargin == 1
                     obj.my_pipeline = my_pipeline();
@@ -104,7 +105,7 @@ classdef recording < handle & matlab.mixin.Copyable
             % and labels so we'll have an even labels distribution 
             obj.features = resample_data(obj.features, obj.labels);
             [obj.segments, obj.labels] = resample_data(obj.segments, obj.labels);
-
+            % defining the function here for memory improvements
             function [data, labels, rsmpl_segments, rsmpl_labels] = resample_data(data, labels)
                     % this function resamples each class by the factors in rsmpl_size. each
                     % class resample factor is stored in rsmpl_size in the index which is
@@ -183,7 +184,7 @@ classdef recording < handle & matlab.mixin.Copyable
                     obj.data_store = set2ds(obj.features, obj.labels, obj.my_pipeline);
                 end
             end
-
+            % defining the function here for memory improvements
             function ds = set2ds(segments, labels, my_pipeline)
                     % this function creates a data store from a data set
                     %
@@ -234,7 +235,7 @@ classdef recording < handle & matlab.mixin.Copyable
                 my_wgn_p = obj.my_pipeline.wgn_p;
                 obj.data_store = transform(obj.data_store, @augment_data);
             end
-
+            % defining the function here for memory improvements
             function aug_data = augment_data(datastore)
                     % this function creates an augmented data from the processed data the
                     % NN recieves
@@ -311,7 +312,6 @@ classdef recording < handle & matlab.mixin.Copyable
                 args.filt = false;
                 args.fft = false;
             end
-            % create Xline indices to seperate recordings
             legend_names = {'channel 1','channel 2','channel 3','channel 4','channel 5',...
                 'channel 6','channel 7','channel 8','channel 9','channel 10','channel 11'};
             % raw data

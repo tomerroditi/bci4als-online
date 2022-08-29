@@ -5,13 +5,10 @@ function filt_data = filter_segments(segments, my_pipeline)
 % Inputs:
 %   - segments: a 4D matrix containing the segmented raw data, its
 %   dimentions are [electrodes, time, channels, trials].
-%   - cont_or_disc: a string specifying if the segmentation type is
-%   continuous or discrete.
-%   - constants: a Constants object containing some constants for the
-%   preprocessing process.
+%   - my_pipeline: a my_pipeline object containing the parameters for preprocessing.
 %
 % Output:
-%   - postprocces_segments: a 4D matrix of the segments after being
+%   - filt_data: a 4D matrix of the segments after being
 %   preproccesed, the dimentions order are the same as in 'segments'
 
 % define some usefull variables

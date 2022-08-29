@@ -4,16 +4,15 @@ script_setup()
 
 %% load the model and its options
 uiopen("load");
-options = model.options;
-constants = options.constants;
+my_pipeline = model.my_pipeline;
 
 % extract some parameters
-start_buff = constants.buffer_start; end_buff = constants.buffer_end; % buffers
-Fs = constants.sample_rate;
-sequence_overlap = options.sequence_overlap; % overlap between sequences
-seg_dur = options.seg_dur;           % segments duration in seconds
-overlap = options.overlap;           % following segments overlapping duration in seconds
-sequence_len = options.sequence_len; % length of a sequence to enter in sequence DL models
+start_buff = my_pipeline.buffer_start; end_buff = my_pipeline.buffer_end; % buffers
+Fs = my_pipeline.sample_rate;
+sequence_overlap = my_pipeline.sequence_overlap; % overlap between sequences
+seg_dur = my_pipeline.seg_dur;           % segments duration in seconds
+overlap = my_pipeline.overlap;           % following segments overlapping duration in seconds
+sequence_len = my_pipeline.sequence_len; % length of a sequence to enter in sequence DL models
 step_size = seg_dur - overlap;
 seq_step_size = seg_dur - sequence_overlap;
 
@@ -28,32 +27,28 @@ inlet = lsl_inlet(result{1});
 inlet.open_stream()
 
 %% check signal quality
-flag = false;
-t_1 = timer('TimerFcn',"flag = check_streamed_signal(inlet, options, constants);", 'Period', 2,... 
-    'ExecutionMode', 'fixedRate', 'TasksToExecute', 5, 'BusyMode', 'drop');
-start(t_1)
-while t_1.TasksExecuted < 5
-    pause(4)
+for i = 1:5
+    flag = check_streamed_signal(inlet, my_pipeline);
     if flag
-        error('signal quality is damaged, check the electrodes in the openbci gui. try restarting the hardware'); %#ok<UNRCH> 
+        error('signal quality is damaged, check the electrodes in the openbci gui. try restarting the hardware'); 
     end
 end
-clear t_1 % its a good practice to delete timers after calling them
-
 %% perform a quick finetuning before starting a session if you desire
 answer = input('would you like to fine tune the model with new data? type "yes"/"no": ');
 if strcmpi(answer, 'yes')
-    disp('enter the desired path to save the recording in the Lab Recorder Gui, change the file name to EEG.xdf!');
-    system([constants.lab_recorder_path '\LabRecorder.exe'])
-    record_me()
-    path = uigetdir(constants.root_path, 'pls select the folder you saved the new recording to');
-    model = fine_tune_model(model, path);
+    % 2 - left, 3 - right
+    markers = [2;3]; % marker used for each class relative to all clases - make sure an image for the marker is available
+    number_of_trials = 10; % number of cues per class
+    trial_length = 5; % length in seconds of each cue
+    record_me(markers, number_of_trials, trial_length);
+    path = uigetdir(my_pipeline.root_path, 'pls select the folder you saved the new recording to');
+    model.fine_tune_model(path);
 end
 
 %% extract data from stream, preprocess, classify and execute actions
 data_size = floor(seg_dur*Fs + seq_step_size*Fs*(sequence_len - 1) + start_buff + end_buff);
 % set a timer object and start the bci program!
-t = timer('TimerFcn',"my_bci(inlet, bci_model, options, constants, data_size)", 'Period', step_size,... 
+t = timer('TimerFcn',"my_bci(inlet, model, my_pipeline, data_size)", 'Period', step_size,... 
     'ExecutionMode', 'fixedRate', 'TasksToExecute', 10000, 'BusyMode', 'drop');
 start(t);
 input('press any button to stop the BCI')

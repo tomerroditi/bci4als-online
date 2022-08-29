@@ -16,7 +16,7 @@ script_setup()
 
 %% select new recordings to visualize
 recorders = {'tomer', 'omri', 'nitay'}; % people we got their recordings
-folders_num = {[1],[],[]}; % recordings numbers - make sure that they exist
+folders_num = {[900:901],[],[]}; % recordings numbers - make sure that they exist
 
 %% load the model and its options
 uiopen("load")
@@ -39,7 +39,7 @@ model.classify_gestures(train, plot = true, plot_title = 'train');
 model.classify_gestures(val, plot = true, plot_title = 'val');
 model.classify_gestures(new, plot = true, plot_title = 'new');
 
-% create one object to hold all recordings 
+%% create one object to hold all recordings 
 all_rec = copy(train);
 all_rec.append_rec(val);
 all_rec.append_rec(new);

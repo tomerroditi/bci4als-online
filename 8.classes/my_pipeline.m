@@ -5,10 +5,10 @@ classdef my_pipeline < handle
         class_names       = {'Idle', 'Left hand', 'Right hand'}; % classes names - unspecify classes will be labeled as
                                                                  % idle if they exist in the recording
         class_marker      = cellstr(num2str([1;2;3], '%#.16g')); % each class markers in the recording files,
-                                                                 % its possible to give more than 1 marker for 
+                                                                 % its possible to give more than 1 marker for
                                                                  % a certain class - use a cell of char instead of a char
         class_label       = [1;2;3];  % the label to use for each class when labeling segments,
-                                      % DO NOT use 0 as a label, use -1 to completely reject the class.
+                                      % DO NOT use 0 as a label, use -1 to completely reject the class segments.
                                       
         % markers parameters
         start_recordings  = num2str(111, '%#.16g');   % start recording marker
@@ -19,7 +19,7 @@ classdef my_pipeline < handle
         model_algo        = 'EEGNet'; % ML model to train, choose from the files in the DL pipelines folder
                     % features or segments - what data to use for model trainig
         feat_or_data      = 'data'; % specify if you desire to extract data or features, choose from {'data', 'feat'}
-        feat_alg          = 'none'; % feature extraction algorithm, choose from {'basic', 'wavelet'}
+        feat_alg          = 'none'; % feature extraction algorithm, choose from the functions names in feature extraction methods folder
 
         % segmentation related parameters
         cont_or_disc      = 'continuous'; % segmentation type choose from {'discrete', 'continuous'}
@@ -70,10 +70,10 @@ classdef my_pipeline < handle
 
         % DL model training options parameters - used in the DL pipelines
         verbose_freq           = 100;
-        max_epochs             = 50;
+        max_epochs             = 100;
         mini_batch_size        = 300;
         validation_freq        = 100;
-        learn_rate_drop_period = 45;
+        learn_rate_drop_period = 90;
 
         % usefull paths
         root_path

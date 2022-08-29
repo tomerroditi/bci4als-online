@@ -15,27 +15,26 @@ end
 
 % collect data from inlet stream
 while size(data,2) < segment_size
-    pause(5)
+    pause(1)
     chunk = inlet.pull_chunk();
-    chunk(my_pipeline.xdf_removed_chan,:) = [];
+    chunk(my_pipeline.removed_chan,:) = [];
     data = cat(2, data, chunk);
 end
 
-% take a 5 second piece of data (include buffers for filtering)
-disp(size(data,2) - segment_size + 1)
-segments = data(:,end - segment_size + 1:end);
+% take the newest segment from the data (include buffers for filtering)
+segment = data(:,end - segment_size + 1:end);
 
 % filter the data
-segments = filter_segments(segments, my_pipeline.cont_or_disc, my_pipeline);
+segment = filter_segments(segment, my_pipeline);
 
 % create the sequence 
-segments = create_sequence(segments, my_pipeline);
+segment = create_sequence(segment, my_pipeline);
 
 % normalize the data
-segments = norm_eeg(segments, my_pipeline.quantiles);
+segment = norm_eeg(segment, my_pipeline.quantiles);
 
 % check the data fft
-fourier = abs(fft(segments(:,:,1,1,1), [], 2))./size(segments, 2);
+fourier = abs(fft(segment(:,:,1,1,1), [], 2))./size(segment, 2);
 freq = linspace(0, my_pipeline.sample_rate/2, floor(size(fourier, 2)/2) + 1);
 fourier = fourier(:,1:floor(size(fourier,2)/2) + 1);
 
@@ -73,7 +72,7 @@ end
 % from the data that the model was trained on, if the distance is larger
 % than some value its a good indication for corrupted signal 
 
-data(:,1:my_pipeline.sample_rate*2) = [];
+data(:,1:end - my_pipeline.buffer_start + my_pipeline.buffer_end) = [];
 flag = false;
 end
 

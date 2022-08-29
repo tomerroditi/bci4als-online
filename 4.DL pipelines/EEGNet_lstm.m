@@ -39,11 +39,12 @@ layers = [
     eluLayer()
     averagePooling2dLayer([1 8], "Stride", [1 8], "Padding", "same")
     dropoutLayer(0.25)
-    fullyConnectedLayer(10)
+    fullyConnectedLayer(20)
     dropoutLayer(0.25)
     sequenceUnfoldingLayer()
     flattenLayer()
-    lstmLayer(num_classes, "OutputMode","last")
+    lstmLayer(10, "OutputMode","last")
+    fullyConnectedLayer(num_classes)
     softmaxLayer()
     classificationLayer()];
 

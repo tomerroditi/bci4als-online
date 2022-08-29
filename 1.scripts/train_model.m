@@ -2,12 +2,10 @@
 % model to predict right left or idle, follow the instructions bellow to
 % manage the script:
 % 
-% - change the folders paths in the first section to the relevant 
-%   recordings you intend to use to train the model.
-% - change the options settings according to the desired pipeline you wish
+% - change the folders numbers in the first section to the relevant 
+%   recordings you intend to use to train and validate the model.
+% - change the my_pipeline properties values according to the desired pipeline you wish
 %   to create.
-% - for more changes check the 'constants' class function in 'classes'
-%   folder.
 % - choose a folder to save your trained model to when the save gui is
 %   opened
 
@@ -18,14 +16,10 @@ script_setup();
 
 %% select folders to aggregate data from
 recorders = {'tomer', 'omri', 'nitay','02','03','04','05','06','07','08','09','10','12'}; % people we got their recordings
-
-% train_folders_num = {[], [], [], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], [2:5], []}; % recordings numbers for train data - make sure that they exist
-% val_folders_num =  {[], [], [], [], [], [], [], [], [], [], [], [], [2:5]}; % recordings numbers for validation data- make sure that they exist
-
-train_folders_num = {[3,5,6,8,9,10,12,13,15], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for train data - make sure that they exist
+train_folders_num = {[3,5,6,8,9,10,12,13,15,200:202], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for train data - make sure that they exist
 val_folders_num =  {[11], [], [], [], [], [], [], [], [], [], [], [], []}; % recordings numbers for validation data- make sure that they exist
 
-pipeline = my_pipeline("seg_dur", 4, "overlap", 3.5,"model_algo", 'EEGNet_lstm', 'sequence_len', 4, 'sequence_overlap', 2);
+pipeline = my_pipeline("seg_dur", 4, "overlap", 3.5, "model_algo", 'EEGNet_lstm', 'sequence_len', 4, 'sequence_overlap', 1, 'threshold', 0.4);
 
 %% preprocess the data into train, test and validation sets
 train = multi_recording(recorders, train_folders_num, pipeline);
