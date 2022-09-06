@@ -2,45 +2,55 @@ classdef bci_model < handle & matlab.mixin.Copyable
     properties (SetAccess = protected)
         model              % the ML model (probabilistics models only!)
         threshold          % threshold for idle class classification
-        feat_idx           % used features indices (for feature dependent models)
+        selected_feat_idx  % used features indices (for feature dependent models)
         DL_flag            % flag to mark if its a DL model or not
-        my_pipeline        % the options structure that was used to create the model
+        pipeline        % the options structure that was used to create the model
         conf_level = 4;    % confidence level
         cool_time  = 4;    % time to wait before executing another gesture
         max_delay  = 7;    % maximum time delay between real gesture execution and gesture recognition
         train              % recordings\names that used to train the model
         val                % recordings\names that used to validate the model
-        test = multi_recording(); % recordings\names that used to test the model
     end
 
     methods
         %% constructor
         function obj = bci_model(train, val)
             % train/val/test - a recording object
-            obj.train = train; obj.train.group = 'train';
-            obj.val = val; obj.val.group = 'validation';
-            obj.my_pipeline = train.my_pipeline;
+            obj.train = train;
+            obj.val = val;
+            obj.pipeline = train.get_pipeline();
 
-            obj.train.rsmpl_data();
-            obj.train.create_ds(); obj.val.create_ds(); % make sure that both objects has data stores
+            obj.train.create_ds(oversample = true); 
+            obj.val.create_ds();
             obj.train.augment();
+            obj.train_my_model();
+            obj.train.create_ds(); % remove oversampled data from the ds
 
-            % train a model according to the model_algo name in the options structure
-            [obj.model, obj.feat_idx, obj.DL_flag] = train_my_model(obj.my_pipeline.model_algo,...
-                obj.my_pipeline, train.data_store, val.data_store);
-
-            % remove the resampled data from the train set and reconstruct
-            % its original data store
-            train.remove_rsmpl_data();
-
-            % calculate model threshold for idle classification - you may
-            % change the threshold selection process as you wish, notice
-            % the 'set_threshold' method
-            [~, obj.threshold] = evaluation(obj, train.data_store, train.labels, ...
-                criterion = 'accu', criterion_thresh = 1);
-            % find the best values for cool time and confidence level
-            obj.find_optimal_values();
+            % calculate model threshold for idle classification
+            obj.set_threshold('accu', 1)
+            obj.set_optimal_ct_cl_values(); % set cool time and confidence level
         end
+
+        function train_my_model(obj)            
+            % check what DL pipelines are available in the folder "4.DL pipelines"
+            DL_pipe = dir('4.DL pipelines');
+            DL_pipe_names = extractfield(DL_pipe, 'name');
+
+            train_ds = obj.train.get_ds(); %#ok<NASGU> 
+            val_ds = obj.val.get_ds(); %#ok<NASGU> 
+            
+            % train the desired model 
+            algo = obj.pipeline.model_algo;
+            if ismember([algo '.m'], DL_pipe_names) % DL models
+                obj.model = eval([algo '(train_ds, val_ds, obj.pipeline);']); % this will call the DL pipeline
+                obj.selected_feat_idx = []; % we currently use none feature NN
+                obj.DL_flag = true;
+            else % classic ml models
+                obj.DL_flag = false;
+                error('classic ml is not supported yet, pls use a valid DL pipeline name')
+            end
+        end
+
         
         %% model values related methods
         % setting cool time and confidence level values
@@ -56,15 +66,17 @@ classdef bci_model < handle & matlab.mixin.Copyable
         end
         
         % optimize cool time and confidence level
-        function find_optimal_values(obj)
+        function set_optimal_ct_cl_values(obj)
         % this function is used to find the optimal cool time and
         % confidence level of the model, and sets their properties
         % accordingly
             cooling = 2:0.5:8;
             confidence = 1:8;
+
             best_metric = 0;
             best_param = [1, 1]; % initialize the best params array
             pred = obj.classify(obj.train);
+
             for i = 1:length(cooling)
                 for j = 1:length(confidence)
                     obj.set_values(cooling(i), confidence(j));
@@ -76,12 +88,10 @@ classdef bci_model < handle & matlab.mixin.Copyable
                     end
                 end
             end
-            % set the best parameters
-            obj.set_values(best_param(1), best_param(2));
+            obj.set_values(best_param(1), best_param(2)); % set the best parameters
         end
 
-        % set a new threshold by criterion
-        function new_thresh = set_threshold(obj, crit_thresh, crit)
+        function  set_threshold(obj, crit, crit_thresh)
             % this function is used to set a new threshold to the model.
             % Inputs:
             %   crit_thresh - double, for a single input its the new threshold value,
@@ -90,15 +100,17 @@ classdef bci_model < handle & matlab.mixin.Copyable
             %          perfcurv criterions.
             % Outputs:
             %   new_thresh - the new threshold of the model
+            classes = obj.train.get_labels_categories();
+            idle_idx = strcmp(classes, 'idle');
 
-            if nargin == 2
-                obj.threshold = crit_thresh;
-                new_thresh = crit_thresh;
-            elseif nargin == 3
-                [~, new_thresh] = evaluation(obj, obj.train.data_store, obj.train.my_pipeline, ...
-                    criterion = crit, criterion_thresh = crit_thresh); 
-                obj.threshold = new_thresh;
-            end
+            data_store = obj.train.get_ds();
+            scores = predict(obj.model, data_store);
+            true_labels = obj.train.get_labels_of_ds();
+            [crit_values, ~, thresholds] = perfcurve(true_labels, scores(:,idle_idx), 'idle', 'XCrit', crit);
+
+            % set a working point for class Idle
+            [~,I] = min(abs(crit_values - crit_thresh));
+            obj.threshold = thresholds(I); % the working point
         end
 
         %% classifications of recording objects
@@ -117,7 +129,22 @@ classdef bci_model < handle & matlab.mixin.Copyable
             elseif isempty(recording.data_store)
                 recording.create_ds();
             end
-            [predictions,~,CM] = evaluation(obj, recording.data_store, recording.labels, "thres_C1", obj.threshold, "print", args.plot, "CM_title", args.plot_title);
+
+            classes = obj.train.get_labels_categories();
+            idle_idx = strcmp(classes, 'idle');
+            classes(idle_idx) = [];
+
+            data_store = recording.get_ds();
+            scores = predict(obj.model, data_store);
+
+            [~, indices] = max(scores(:,~idle_idx), [], 2);
+            predictions = classes(indices);
+            predictions(scores(:,idle_idx) >= obj.threshold) = {'idle'};
+            predictions = categorical(predictions);
+
+            true_labels = recording.get_labels_of_ds();
+            CM = confusionmat(true_labels, predictions);
+
             if args.plot
                 recording.visualize(predictions, title = args.plot_title)
             end
@@ -146,6 +173,7 @@ classdef bci_model < handle & matlab.mixin.Copyable
             [accuracy, missed_gest, mean_delay, gest_CM] ...
                 = detect_gestures(obj, recording, predictions, args.plot, args.plot_title);
         end
+
 
         %% model visualizations
         % activation layer outputs
@@ -194,15 +222,15 @@ classdef bci_model < handle & matlab.mixin.Copyable
 
         %% model explainability
         function EEGNet_explain(obj)
-            if strcmp(obj.my_pipeline.model_algo(1:6), 'EEGNet') 
-                plot_weights(obj.model, obj.my_pipeline.electrode_loc)
+            if strcmp(obj.pipeline.model_algo(1:6), 'EEGNet') 
+                plot_weights(obj.model, obj.pipeline.electrode_loc)
             end
         end
 
         %% transfer learning and fine tuning
         function new_model = transfer_learning(obj, train, val)
 
-            pipeline = obj.my_pipeline;
+            pipeline = obj.pipeline;
             train.rsmpl_data();
             train.create_ds(); val.create_ds();
             train.augment();
@@ -226,7 +254,7 @@ classdef bci_model < handle & matlab.mixin.Copyable
         end
 
         function new_thresh = fine_tune_model(obj, path)           
-            train_fine = recording(path, obj.my_pipeline);
+            train_fine = recording(path, obj.pipeline);
             train_fine.rsmpl_data()
             train_fine.create_ds();
             train_fine.augment()
@@ -239,7 +267,7 @@ classdef bci_model < handle & matlab.mixin.Copyable
                 'Verbose', true, ...
                 'VerboseFrequency', 10, ...
                 'MaxEpochs', 50, ...
-                'MiniBatchSize', obj.my_pipeline.mini_batch_size, ...  
+                'MiniBatchSize', obj.pipeline.mini_batch_size, ...  
                 'Shuffle','every-epoch', ...
                 'InitialLearnRate', 0.0001, ...
                 'OutputNetwork', 'last-iteration');
@@ -280,8 +308,8 @@ classdef bci_model < handle & matlab.mixin.Copyable
         % this function reconstruct a loaded model recordings data
             [recorders_t, num_t] = names2rec_num(obj.train);
             [recorders_v, num_v] = names2rec_num(obj.val);
-            obj.train = multi_recording(recorders_t, num_t, obj.my_pipeline);
-            obj.val = multi_recording(recorders_v, num_v, obj.my_pipeline);
+            obj.train = multi_recording(recorders_t, num_t, obj.pipeline);
+            obj.val = multi_recording(recorders_v, num_v, obj.pipeline);
             obj.train.create_ds(); obj.val.create_ds();
         end
 

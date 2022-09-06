@@ -20,9 +20,9 @@ classdef multi_recording < handle & matlab.mixin.Copyable & recording
 
             if nargin > 0 % support empty objects
                 if nargin == 2
-                    obj.my_pipeline = my_pipeline();
+                    obj.pipeline = my_pipeline();
                 else
-                    obj.my_pipeline = pipeline;
+                    obj.pipeline = pipeline;
                 end
                 paths = create_paths(recorders, folders);
                 % create a waitbar to show progress
@@ -30,7 +30,7 @@ classdef multi_recording < handle & matlab.mixin.Copyable & recording
                 % preprocess the data files
                 for i = 1:length(paths)
                     waitbar(i/length(paths), f, ['preprocessing data, recording ' num2str(i) ' out of ' num2str(length(paths))]); % update the wait bar
-                    rec = recording(paths{i}, obj.my_pipeline); % create a class member for each path
+                    rec = recording(paths{i}, obj.pipeline); % create a class member for each path
                     if i == 1
                     % ######## insert here a function to determine if to use big data or not #########
                         if obj.big_data
@@ -76,6 +76,8 @@ classdef multi_recording < handle & matlab.mixin.Copyable & recording
             if ~obj.big_data
                 obj.features = cat(5, obj.features, new_rec.features);
                 obj.segments = cat(5, obj.segments, new_rec.segments);
+            else
+                obj.save_data(new_rec.Name{1}, new_rec.segments, new_rec.features, new_rec.labels, new_rec.my_pipeline, 'source')
             end
             obj.supp_vec        = cat(2, obj.supp_vec, new_rec.supp_vec);
             obj.sample_time     = cat(2, obj.sample_time, new_rec.sample_time);
@@ -102,11 +104,6 @@ classdef multi_recording < handle & matlab.mixin.Copyable & recording
             obj.rec_idx = cat(1, obj.rec_idx, {new_rec.Name{1}, seg_idx, raw_idx, filt_idx, supp_vec_idx, sample_time_idx});
             [obj.supp_vec, obj.sample_time] = fix_times(obj.supp_vec, obj.sample_time); % fix time points
             obj.num_rec = obj.num_rec + 1; % extract number of recordings 
-
-            % save big data if needed
-            if obj.big_data
-                obj.save_data(new_rec.Name{1}, new_rec.segments, new_rec.features, new_rec.labels, new_rec.my_pipeline, 'source')
-            end
         end
         
         % extract recordings by index

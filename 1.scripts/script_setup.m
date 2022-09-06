@@ -4,14 +4,14 @@ function script_setup()
 
     % create a constant object
     addpath(genpath('..\8.classes')); % add the root folder of the project to the search path
-    C = my_pipeline();
+    paths = path_handler();
     
-    % add relevant paths to the script
+    % add relevant paths to the matlab searching path
     warning('off'); % suppress a warning about function names conflicts (there is nothing to do with it...)
-    addpath(genpath(C.root_path)); 
-    addpath(genpath(C.eeglab_path));
-    addpath(genpath(C.lab_recorder_path));
-    addpath(genpath(C.liblsls_path));
+    addpath(genpath(paths.get_root_path())); 
+    addpath(genpath(paths.get_eeglab_path()));
+    addpath(genpath(paths.get_lab_recorder_path()));
+    addpath(genpath(paths.get_liblsls_path()));
     warning('on');
 
 end

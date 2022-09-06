@@ -16,12 +16,10 @@ end
 
 % extract some paremeters from options structure
 sequence_len = my_pipeline.sequence_len;          % number of "windows" in each sequence
-seg_dur = my_pipeline.seg_dur;                    % duration of a single "window"
-sequence_overlap = my_pipeline.sequence_overlap;  % overlapping between "windows"
+seg_dur = my_pipeline.segment_duration_sec;                    % duration of a single "window"
+seq_step_size = my_pipeline.sequence_step_size;
 Fs = my_pipeline.sample_rate;           % the hardware sample rate
 seg_time = floor(seg_dur*Fs);
-
-seq_step_size = floor(seg_dur*Fs - sequence_overlap*Fs);
 
 % if sequence length is 1 then dont perform sequencing!
 if sequence_len == 1

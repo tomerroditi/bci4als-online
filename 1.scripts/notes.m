@@ -1,10 +1,9 @@
 %% to do list:
 % big tasks:
+% 1) improve the label protocols
 
 % small tasks:
 % 1) prepare a script for online model evaluation
-% 2) make more recordings - top priority
-% 3) test the model in online sessions
 % 5) fix the model explainability function to auto detect the relevant
 %    layers
 
