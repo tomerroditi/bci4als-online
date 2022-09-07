@@ -3,7 +3,6 @@ function  record_me(class_marker, num_trials, trial_len)
 %
 % Inputs:
 
-
 % set parameters
 cue_len          = 1;     % cue length in seconds
 ready_len        = 2;     % ready length in seconds

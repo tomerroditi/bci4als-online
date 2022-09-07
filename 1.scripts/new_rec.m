@@ -10,7 +10,7 @@ clc; clear all; close all;
 % 6. when the simulation is finished stop the labrecorder!.
 
 % a quick paths check and setup (if required) for the script
-script_setup()
+script_setup();
 
 %% new recording parameters 
 % 2 - left, 3 - right
