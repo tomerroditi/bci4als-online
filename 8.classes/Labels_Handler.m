@@ -1,24 +1,23 @@
 classdef Labels_Handler < handle
     properties %(Access = protected)
         marker_class_map
-        categories
+        classes
         labels
     end
 
     methods
         function obj = Labels_Handler(class_names, class_marker)
-            class_names = sort(lower(class_names));
-            obj.categories = class_names;
-
+            obj.classes = unique(class_names);
             obj.marker_class_map = obj.create_marker_class_map(class_marker, class_names);
         end
 
-        function class = get_label_from_marker(obj, marker)
+        function label = get_label_from_marker(obj, marker)
             if isKey(obj.marker_class_map, marker)
-                class = obj.marker_class_map(marker);
+                label = obj.marker_class_map(marker);
             else
-                class = 'idle';
+                label = 'idle';
             end
+            label = categorical({label}, obj.classes);
         end
 
         function reject_indices = reject_marked_labels(obj)
@@ -27,11 +26,11 @@ classdef Labels_Handler < handle
         end
 
         function set_labels(obj, labels_array)
-            obj.labels = categorical(labels_array, obj.categories);
+            obj.labels = categorical(labels_array, obj.classes);
         end
 
-        function categorical_labels = get_categorical_labels(obj)
-            categorical_labels = obj.labels;
+        function labels = get_labels(obj)
+            labels = obj.labels;
         end
 
         function cat_cell = get_cell_of_categorical_labels(obj)
@@ -41,8 +40,15 @@ classdef Labels_Handler < handle
             end
         end
 
-        function categories = get_categories(obj)
-            categories = obj.categories;
+        function reject_by_idx(obj, indices)
+            obj.labels(indices) = [];
+        end
+        
+        function append(obj, labels)
+            if ~iscolumn(labels)
+                labels = labels.';
+            end
+            obj.labels = cat(1, obj.labels, labels);
         end
     end
 

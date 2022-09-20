@@ -1,6 +1,6 @@
 classdef stream_markers < handle
     properties
-        marker_stamps   % cell arraw with the marker names stream
+        marker_stamps   % cell array with the marker names stream
         marker_latencies % numerical array with each marker latency
     end
 
@@ -27,10 +27,6 @@ classdef stream_markers < handle
 
         function adjust_latencies_by(obj, num)
             obj.marker_latencies = obj.marker_latencies + num;
-        end
-
-        function convert_marker(old_markers, new_markers)
-
         end
     end
 end

@@ -2,8 +2,8 @@ classdef my_pipeline < handle
     % pipeline parameters and general constants object
     properties (GetAccess = public, SetAccess = protected)
         % classes and markers
-        class_names       = {'Idle', 'Left hand', 'Right hand'}; 
-        class_marker      = cellstr(num2str([1;2;3], '%#.16g')); % each class markers in the recording files,
+        class_names       = {'Idle'; 'Left & right hand'}; 
+        class_markers      = {num2str(1, '%#.16g'); cellstr(num2str([2;3], '%#.16g'))}; % each class markers in the recording files,
                                                                  % its possible to give more than 1 marker for
                                                                  % a certain class - use a cell of char instead of a char                
         expi_start_marker  = num2str(111, '%#.16g');  
@@ -12,7 +12,7 @@ classdef my_pipeline < handle
 
         % algorithms
         model_algo        = 'EEGNet'; % ML model to train, choose from the files in the DL pipelines folder
-        feat_algo          = 'none';   % feature extraction algorithm, choose from the functions names in feature extraction methods folder
+        feat_algo          = 'none';  % feature extraction algorithm, choose from the functions names in feature extraction methods folder
 
         % segmentation related parameters
         segmentation_method      = 'continuous'; % segmentation type choose from {'discrete', 'continuous'}
@@ -20,9 +20,9 @@ classdef my_pipeline < handle
         pre_start_sec         = 0.5; % duration in seconds to include in segments before the class marker
         post_start_sec        = 1.5; % duration in seconds to include in segments after the class marker
             % continuous only
-        segment_duration_sec        = 4;   
-        segments_step_size_sec      = 0.5; 
-        sequence_len                = 1;   
+        segment_duration_sec        = 4;
+        segments_step_size_sec      = 0.5;
+        sequence_len                = 1; 
         sequence_step_size          = 1;   
         segment_labeling_threshold  = 0.7;
         
@@ -53,7 +53,7 @@ classdef my_pipeline < handle
 
         % augmentations probabilities - double in range 0-1
         x_flip_p          = 0;    % Xflip
-        wgn_p             = 0.9;  % white gaussian noise
+        wgn_p             = 0.8;  % white gaussian noise
     
         % electrodes names and locations
         electrode_num     = [1,2,3,4,5,6,7,8,9,10,11]; % electrode number
@@ -94,8 +94,8 @@ classdef my_pipeline < handle
                         obj.segment_labeling_threshold = varargin{n+1};
                     case 'class_names'
                         obj.class_names = varargin{n+1};
-                    case 'class_marker' 
-                        obj.class_marker = varargin{n+1};
+                    case 'class_markers' 
+                        obj.class_markers = varargin{n+1};
                     case 'sample_rate'
                         obj.sample_rate = varargin{n+1};
                     case 'buffer_start'
@@ -144,7 +144,12 @@ classdef my_pipeline < handle
                         obj.mini_batch_size = varargin{n+1};
                     case 'validation_freq' 
                         obj.validation_freq = varargin{n+1};
+                    case 'learn_rate_drop_period'
+                        obj.learn_rate_drop_period = varargin{n+1};
                 end
+
+                [obj.class_names, I] = sort(lower(obj.class_names));
+                obj.class_markers = obj.class_markers(I);
             end
         end
     end

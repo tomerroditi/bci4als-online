@@ -1,4 +1,4 @@
-function [accuracy, missed_gest, mean_delay, CM] = detect_gestures(bci_model, recording, predictions,  visualize, plot_title)
+function [accuracy, missed_gest, mean_delay, CM] = detect_gestures(obj, recording, predictions,  visualize, plot_title)
     % this functions is used to calculate the model accuracy on
     % gesture execution. you can set new values for conf_level,
     % cool_time and max_delay field of the recording bci_model
@@ -15,9 +15,9 @@ function [accuracy, missed_gest, mean_delay, CM] = detect_gestures(bci_model, re
     %                     the gesture label
 
     % extracting parameters for code readability
-    K = bci_model.conf_level;
-    cool_time = bci_model.cool_time;
-    max_delay = bci_model.max_delay;
+    K = obj.conf_level;
+    cool_time = obj.cool_time;
+    max_delay = obj.max_delay;
     labels = recording.labels;
     my_pipeline = recording.my_pipeline;
     class_label = my_pipeline.class_label;

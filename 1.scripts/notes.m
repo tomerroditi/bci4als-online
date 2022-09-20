@@ -1,6 +1,11 @@
 %% to do list:
 % big tasks:
-% 1) improve the label protocols
+% - complete the 2 new classes, gestures and segments classifiers.
+% - switch the way we track the segments locations in time, change it from
+% indices of samples to time, it will make it easier to track them outside
+% the recording object.
+% - figure out how to improve the segmented_signal class readability
+
 
 % small tasks:
 % 1) prepare a script for online model evaluation

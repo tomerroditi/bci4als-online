@@ -1,111 +1,99 @@
 classdef bci_model < handle & matlab.mixin.Copyable
     properties (SetAccess = protected)
-        model              % the ML model (probabilistics models only!)
+        model              % the DL model
         threshold          % threshold for idle class classification
-        selected_feat_idx  % used features indices (for feature dependent models)
-        DL_flag            % flag to mark if its a DL model or not
-        pipeline        % the options structure that was used to create the model
-        conf_level = 4;    % confidence level
-        cool_time  = 4;    % time to wait before executing another gesture
-        max_delay  = 7;    % maximum time delay between real gesture execution and gesture recognition
-        train              % recordings\names that used to train the model
-        val                % recordings\names that used to validate the model
+        pipeline           % the my pipeline object that was used to create the training data
+        confidence = 4;    % confidence level (number of non idle predictions in a row to invoke a gesture)
+        cool_time  = 4;    % seconds to wait before allowing another gesture execution
+        train_rec          % recordings that used to train the model
+        val_rec            % recordings that used to validate the model
     end
 
-    methods
+    methods (Access = public)
         %% constructor
-        function obj = bci_model(train, val)
+        function obj = bci_model(training_recording, validation_recording)
             % train/val/test - a recording object
-            obj.train = train;
-            obj.val = val;
-            obj.pipeline = train.get_pipeline();
-
-            obj.train.create_ds(oversample = true); 
-            obj.val.create_ds();
-            obj.train.augment();
-            obj.train_my_model();
-            obj.train.create_ds(); % remove oversampled data from the ds
-
-            % calculate model threshold for idle classification
-            obj.set_threshold('accu', 1)
-            obj.set_optimal_ct_cl_values(); % set cool time and confidence level
+            obj.train_rec = training_recording;
+            obj.val_rec = validation_recording;
+            obj.pipeline = training_recording.get_pipeline();
         end
 
-        function train_my_model(obj)            
-            % check what DL pipelines are available in the folder "4.DL pipelines"
-            DL_pipe = dir('4.DL pipelines');
-            DL_pipe_names = extractfield(DL_pipe, 'name');
+        function train_model(obj, args)
+            arguments
+                obj
+                args.oversample logical = false;
+                args.augment  logical = false;
+            end
+            [train_ds, val_ds] = obj.get_data_stores(args.oversample, args.augment); %#ok<ASGLU> 
 
-            train_ds = obj.train.get_ds(); %#ok<NASGU> 
-            val_ds = obj.val.get_ds(); %#ok<NASGU> 
-            
-            % train the desired model 
-            algo = obj.pipeline.model_algo;
-            if ismember([algo '.m'], DL_pipe_names) % DL models
-                obj.model = eval([algo '(train_ds, val_ds, obj.pipeline);']); % this will call the DL pipeline
-                obj.selected_feat_idx = []; % we currently use none feature NN
-                obj.DL_flag = true;
-            else % classic ml models
-                obj.DL_flag = false;
-                error('classic ml is not supported yet, pls use a valid DL pipeline name')
+            model_algo = obj.pipeline.model_algo;
+            try 
+                obj.model = eval([model_algo '(train_ds, val_ds, obj.pipeline);']); % this will call the DL pipeline
+            catch ME
+                switch ME.identifier
+                    case 'MATLAB:UndefinedFunction'
+                        error(['the model algorithm "' model_algo '" does not exist, pls use a valid DL pipeline name']);
+                    otherwise
+                        rethrow(ME);
+                end
             end
         end
 
         
         %% model values related methods
         % setting cool time and confidence level values
-        function set_values(obj, cool_time, confidence_level)
+        function set_ct_conf(obj, cool_time, confidence_level)
         % this function is used to set new values for the cool time,
         % confidence level and max delay
         % Inputs:
         %   cool_time - float, new value for cool_time property
         %   confidence_level - int, new value for conf_level property
-        %   max_delay - float - new value for max_delay property
             obj.cool_time = cool_time;
-            obj.conf_level = confidence_level;
+            obj.confidence = confidence_level;
         end
         
-        % optimize cool time and confidence level
-        function set_optimal_ct_cl_values(obj)
+        function set_optimal_ct_conf(obj, cool_time_range, confidence_range)
         % this function is used to find the optimal cool time and
         % confidence level of the model, and sets their properties
         % accordingly
-            cooling = 2:0.5:8;
-            confidence = 1:8;
-
             best_metric = 0;
-            best_param = [1, 1]; % initialize the best params array
-            pred = obj.classify(obj.train);
+            best_param = [cool_time_range(1), confidence_range(1)]; % initialize the best params array
 
-            for i = 1:length(cooling)
-                for j = 1:length(confidence)
-                    obj.set_values(cooling(i), confidence(j));
-                    [accuracy, missed_gest] = obj.classify_gestures(obj.train, predictions = pred);
-                    curr_metric = accuracy*(1-missed_gest); % insert here a function to find the best parameters 
+            seg_CM = obj.classify_segments(obj.train_rec);
+            segment_pred = seg_CM.get_predicted_labels();
+
+            [gesture_true, gesture_true_indices] = obj.train_rec.get_gestures();
+            
+            for i = 1:length(cool_time_range)
+                for j = 1:length(confidence_range)
+                    [gesture_pred, gesture_pred_indices] = obj.train_rec.get_predicted_gestures(segment_pred, confidence_range(j), cool_time_range(i));
+                    gest_CM = gesture_CM(gesture_true, gesture_true_indices, gesture_pred, gesture_pred_indices);
+                    [accuracy, miss_rate] = gest_CM.get_stats();
+
+                    curr_metric = accuracy*(1 - miss_rate); % insert here a function to find the best parameters 
                     if curr_metric > best_metric
                         best_metric = curr_metric;
-                        best_param = [cooling(i), confidence(j)];
+                        best_param = [cool_time_range(i), confidence_range(j)];
                     end
                 end
             end
-            obj.set_values(best_param(1), best_param(2)); % set the best parameters
+            obj.set_ct_conf(best_param(1), best_param(2)); % set the best parameters
         end
 
-        function  set_threshold(obj, crit, crit_thresh)
+        function set_threshold(obj, crit, crit_thresh)
             % this function is used to set a new threshold to the model.
             % Inputs:
             %   crit_thresh - double, for a single input its the new threshold value,
             %                 for two inputs its the criterion threshold in the range [0 1]
             %   crit - str, the criterion to calculate by, refer to matlab
             %          perfcurv criterions.
-            % Outputs:
-            %   new_thresh - the new threshold of the model
-            classes = obj.train.get_labels_categories();
+
+            classes = obj.train_rec.get_classes();
             idle_idx = strcmp(classes, 'idle');
 
-            data_store = obj.train.get_ds();
+            data_store = obj.train_rec.get_data_store();
             scores = predict(obj.model, data_store);
-            true_labels = obj.train.get_labels_of_ds();
+            true_labels = recording.get_labels_from_data_store(data_store);
             [crit_values, ~, thresholds] = perfcurve(true_labels, scores(:,idle_idx), 'idle', 'XCrit', crit);
 
             % set a working point for class Idle
@@ -114,66 +102,29 @@ classdef bci_model < handle & matlab.mixin.Copyable
         end
 
         %% classifications of recording objects
-        % classify segments
-        function [predictions, CM] = classify(obj, recording, args)
-        % this function predicts on recording object
+        function [segment_CM, gesture_CM] = classify_recording(obj, recording, args)
             arguments
                 obj
                 recording
+                args.only_segments = false;
                 args.plot = false;
-                args.plot_title = '';
-            end
-            % perform evaluation on each data store
-            if ~isa(recording, 'recording')
-                error('bci model objects can only classify recording objects')
-            elseif isempty(recording.data_store)
-                recording.create_ds();
+                args.group = 'new';
             end
 
-            classes = obj.train.get_labels_categories();
-            idle_idx = strcmp(classes, 'idle');
-            classes(idle_idx) = [];
+            segment_CM = []; gesture_CM = [];
 
-            data_store = recording.get_ds();
-            scores = predict(obj.model, data_store);
-
-            [~, indices] = max(scores(:,~idle_idx), [], 2);
-            predictions = classes(indices);
-            predictions(scores(:,idle_idx) >= obj.threshold) = {'idle'};
-            predictions = categorical(predictions);
-
-            true_labels = recording.get_labels_of_ds();
-            CM = confusionmat(true_labels, predictions);
-
-            if args.plot
-                recording.visualize(predictions, title = args.plot_title)
-            end
-        end
-
-        % classify gestures
-        function [accuracy, missed_gest, mean_delay, gest_CM, predictions] = classify_gestures(obj, recording, args)
-            arguments
-                obj
-                recording
-                args.predictions
-                args.plot = false;
-                args.plot_title = '';
-            end
             if ~isa(recording, 'recording')
                 error('bci model objects can only classify recording objects')
             elseif isempty(recording)
-                accuracy = []; missed_gest = []; mean_delay = []; gest_CM = []; predictions = [];
                 return
             end
-            if ~isfield(args, 'predictions')
-                predictions = obj.classify(recording, plot = args.plot, plot_title = args.plot_title);
-            else
-                predictions = args.predictions;
-            end
-            [accuracy, missed_gest, mean_delay, gest_CM] ...
-                = detect_gestures(obj, recording, predictions, args.plot, args.plot_title);
-        end
 
+            if args.only_segments
+                segment_CM = obj.classify_segments(recording, plot = args.plot, group = args.group);
+            else
+                [gesture_CM, segment_CM] = obj.classify_gestures(recording, plot = args.plot, group = args.group);
+            end
+        end
 
         %% model visualizations
         % activation layer outputs
@@ -182,7 +133,7 @@ classdef bci_model < handle & matlab.mixin.Copyable
         % layer outputs and hold it on obj.fc_act. you need to name a
         % layer as 'activations' when constructing the DL pipeline in 
         % order to use this function.
-            if obj.DL_flag
+            if isa(obj.model, 'DAGNetwork') || isa(obj.model, 'SeriesNetwork')
                 % find the activation layer index
                 flag = 0;
                 for i = 1:length(obj.model.Layers)
@@ -220,7 +171,7 @@ classdef bci_model < handle & matlab.mixin.Copyable
             scatter_3D(mdl_output, recording);
         end
 
-        %% model explainability
+        % model explainability
         function EEGNet_explain(obj)
             if strcmp(obj.pipeline.model_algo(1:6), 'EEGNet') 
                 plot_weights(obj.model, obj.pipeline.electrode_loc)
@@ -281,7 +232,7 @@ classdef bci_model < handle & matlab.mixin.Copyable
             end
 
         %% save and load models
-        function  save(obj, path, args)
+        function save(obj, path, args)
         % this function saves the model without the recordings data,
         % instead we save each recordings names to save memory
         % Inputs:
@@ -295,33 +246,89 @@ classdef bci_model < handle & matlab.mixin.Copyable
                 return
             end
             % we save only the names so the saved obj will take less memory
-            obj.train = obj.train.Name;
-            obj.val = obj.val.Name;
+            obj.train_rec = obj.train_rec.get_files_handler();
+            obj.val_rec = obj.val_rec.get_files_handler();
             % save the object under the name 'model'
             if ~isempty(path)
-                S.('model') = obj;
+                S.('bci_model') = obj;
                 save(fullfile(path, args.file_name), "-struct", 'S');
             end
         end
 
-        function load_data(obj)
+        function load_recordings_data(obj)
         % this function reconstruct a loaded model recordings data
-            [recorders_t, num_t] = names2rec_num(obj.train);
-            [recorders_v, num_v] = names2rec_num(obj.val);
-            obj.train = multi_recording(recorders_t, num_t, obj.pipeline);
-            obj.val = multi_recording(recorders_v, num_v, obj.pipeline);
-            obj.train.create_ds(); obj.val.create_ds();
+            obj.train_rec = recording(obj.train_rec, obj.pipeline);
+            obj.val_rec = recording(obj.val_rec, obj.pipeline);
         end
 
     end
 
-    methods (Access = ?bci_model_cv)
-        % setting a recording to a certain field
-        function set_train(obj, rec)
-            obj.train = rec;
+    methods (Access = protected)
+        function [train_ds, val_ds] = get_data_stores(obj, oversample, augment)
+            train_ds = obj.train_rec.get_data_store(oversample = oversample, augment = augment);
+            val_ds = obj.val_rec.get_data_store();
+            if ~hasdata(val_ds)
+                val_ds = []; 
+            end
         end
-        function set_val(obj, rec)
-            obj.val = rec;
+
+        % classify segments
+        function seg_CM = classify_segments(obj, rec, args)
+        % this function predicts on recording object
+            arguments
+                obj
+                rec
+                args.plot = false;
+                args.group = 'new';
+            end
+
+            classes = rec.get_classes();
+            idle_idx = strcmp(classes, 'idle');
+            classes(idle_idx) = [];
+
+            data_store = rec.get_data_store();
+            scores = [];
+            % predict ds one by one to maintain the labels order -
+            % important for gesture recognition and visuallization
+            for i = 1:length(data_store.UnderlyingDatastores)
+                curr_ds = data_store.UnderlyingDatastores{i};
+                curr_scores = predict(obj.model, curr_ds);
+                scores = cat(1, scores, curr_scores);
+            end
+
+            [~, indices] = max(scores(:,~idle_idx), [], 2);
+            predictions = classes(indices);
+            predictions(scores(:,idle_idx) >= obj.threshold) = {'idle'};
+            predictions = categorical(predictions);
+
+            true_labels = rec.get_labels();
+            seg_CM = segment_CM(true_labels, predictions);
+
+            if args.plot
+                rec.plot_segments_predictions(predictions, group = args.group);
+            end
+        end
+
+        % classify gestures
+        function [gest_CM, seg_CM] = classify_gestures(obj, rec, args)
+            arguments
+                obj
+                rec
+                args.plot = false;
+                args.group = 'new';
+            end
+
+            seg_CM = obj.classify_segments(rec, plot = args.plot, group = args.group);
+            segment_pred = seg_CM.get_predicted_labels();
+
+            [gesture_true, gesture_true_indices] = rec.get_gestures();
+            [gesture_pred, gesture_pred_indices] = rec.get_predicted_gestures(segment_pred, obj.confidence, obj.cool_time);
+
+            gest_CM = gesture_CM(gesture_true, gesture_true_indices, gesture_pred, gesture_pred_indices);
+
+            if args.plot
+                rec.plot_gesture_predictions(gesture_pred, gesture_pred_indices, group = args.group);
+            end
         end
     end
 end
