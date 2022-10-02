@@ -43,7 +43,7 @@ classdef MyCombinedDatastore < matlab.io.Datastore ...
     %                               will be read from. The read of a
     %                               MyCombinedDatastore is defined by calling
     %                               read on each of the UnderlyingDatastores
-    %                               and then horizontally concatenating the
+    %                               and then vertically concatenating the
     %                               data from read together.
     %
     %   SupportedOutputFormats   -  List of formats supported for writing

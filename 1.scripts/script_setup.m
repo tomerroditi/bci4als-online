@@ -4,7 +4,7 @@ function script_setup()
 
     % create a constant object
     addpath(genpath('..\8.classes')); % add the root folder of the project to the search path
-    paths = path_handler();
+    paths = Path_Handler();
     
     % add relevant paths to the matlab searching path
     warning('off'); % suppress a warning about function names conflicts (there is nothing to do with it...)

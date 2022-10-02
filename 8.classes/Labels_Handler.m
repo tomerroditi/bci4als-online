@@ -11,13 +11,12 @@ classdef Labels_Handler < handle
             obj.marker_class_map = obj.create_marker_class_map(class_marker, class_names);
         end
 
-        function label = get_label_from_marker(obj, marker)
+        function label = get_str_label_from_marker(obj, marker)
             if isKey(obj.marker_class_map, marker)
                 label = obj.marker_class_map(marker);
             else
                 label = 'idle';
             end
-            label = categorical({label}, obj.classes);
         end
 
         function reject_indices = reject_marked_labels(obj)
@@ -25,8 +24,8 @@ classdef Labels_Handler < handle
             obj.labels(reject_indices) = [];
         end
 
-        function set_labels(obj, labels_array)
-            obj.labels = categorical(labels_array, obj.classes);
+        function set_labels(obj, labels_cell)
+            obj.labels = categorical(labels_cell, obj.classes);
         end
 
         function labels = get_labels(obj)
@@ -43,13 +42,7 @@ classdef Labels_Handler < handle
         function reject_by_idx(obj, indices)
             obj.labels(indices) = [];
         end
-        
-        function append(obj, labels)
-            if ~iscolumn(labels)
-                labels = labels.';
-            end
-            obj.labels = cat(1, obj.labels, labels);
-        end
+      
     end
 
     methods (Static, Access = protected)

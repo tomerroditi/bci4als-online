@@ -1,46 +1,52 @@
 {
   "_schemaVersion": "1.0.0",
-  "my_pipeline.my_pipeline":
+  "Data_Pipeline.Data_Pipeline":
   {
     "inputs":
     [
-	{"name":"model_algo", "kind":"namevalue", "type":[["char"],["choices = {'any file name in DL pipelines'}"]]},
-	{"name":"segmentation_method", "kind":"namevalue", "type":["choices = {'continuous', 'discrete'}"]},
 	{"name":"feat_algo", "kind":"namevalue", "type":["char", "choices = {'none', 'any file name in feature extraction methods'}"]},
-	{"name":"segment_duration_sec", "kind":"namevalue", "type":["numeric"]},
-	{"name":"segments_step_size", "kind":"namevalue", "type":["numeric"]},
-	{"name":"sequence_len", "kind":"namevalue", "type":["numeric"]},
-	{"name":"sequence_step_size", "kind":"namevalue", "type":["numeric"]},
-	{"name":"segment_threshold", "kind":"namevalue", "type":["numeric"]},
-	{"name":"pre_start", "kind":"namevalue", "type":["numeric"]},
-	{"name":"post_start", "kind":"namevalue", "type":["numeric"]},
-	{"name":"class_names", "kind":"namevalue", "type":["char"]},
-	{"name":"class_markers", "kind":"namevalue", "type":["numeric"]},
-	{"name":"sample_rate", "kind":"namevalue", "type":["numeric"]},
+	{"name":"segment_duration_sec", "kind":"namevalue", "type":["double"]},
+	{"name":"segments_step_size", "kind":"namevalue", "type":["double"]},
+	{"name":"sequence_len", "kind":"namevalue", "type":["double"]},
+	{"name":"sequence_step_size", "kind":"namevalue", "type":["double"]},
+	{"name":"segment_threshold", "kind":"namevalue", "type":["double"]},
+	{"name":"class_names", "kind":"namevalue", "type":["string cell"]},
+	{"name":"class_markers", "kind":"namevalue", "type":["double"]},
+	{"name":"sample_rate", "kind":"namevalue", "type":["double"]},
 	{"name":"buffer_start", "kind":"namevalue", "type":["integer"]},
 	{"name":"buffer_end", "kind":"namevalue", "type":["integer"]},
 	{"name":"expi_start_marker", "kind":"namevalue", "type":["char"]},
 	{"name":"expi_end_marker", "kind":"namevalue", "type":["char"]},
 	{"name":"trail_end_marker", "kind":"namevalue", "type":["char"]},
-	{"name":"high_freq", "kind":"namevalue", "type":["numeric"]},
-	{"name":"high_width", "kind":"namevalue", "type":["numeric"]},
-	{"name":"low_freq", "kind":"namevalue", "type":["numeric"]},
-	{"name":"low_width", "kind":"namevalue", "type":["numeric"]},
-	{"name":"notch", "kind":"namevalue", "type":["numeric"]},
-	{"name":"notch_width", "kind":"namevalue", "type":["numeric"]},
+	{"name":"high_freq", "kind":"namevalue", "type":["double"]},
+	{"name":"high_width", "kind":"namevalue", "type":["double"]},
+	{"name":"low_freq", "kind":"namevalue", "type":["double"]},
+	{"name":"low_width", "kind":"namevalue", "type":["double"]},
+	{"name":"notch", "kind":"namevalue", "type":["double"]},
+	{"name":"notch_width", "kind":"namevalue", "type":["double"]},
 	{"name":"eog_artifact", "kind":"namevalue", "type":["logical"]},
 	{"name":"avg_reference", "kind":"namevalue", "type":["logical"]},
-	{"name":"quantiles", "kind":"namevalue", "type":["numeric"]},
+	{"name":"quantiles", "kind":"namevalue", "type":["double"]},
 	{"name":"electrodes_to_remove", "kind":"namevalue", "type":["integer"]},
-	{"name":"x_flip_p", "kind":"namevalue", "type":["numeric"]},
-	{"name":"wgn_p", "kind":"namevalue", "type":["numeric"]},
+	{"name":"augmentation_params", "kind":"namevalue", "type":["container.Map"]},
 	{"name":"electrode_num", "kind":"namevalue", "type":["integer"]},
-	{"name":"electrode_loc", "kind":"namevalue", "type":["char"]},
-	{"name":"verbose_freq", "kind":"namevalue", "type":["integer"]},
-	{"name":"max_epochs", "kind":"namevalue", "type":["integer"]},
-	{"name":"mini_batch_size", "kind":"namevalue", "type":["integer"]},
-	{"name":"validation_freq", "kind":"namevalue", "type":["integer"]},
-    {"name":"learn_rate_drop_period", "kind":"namevalue", "type":["integer"]}
+	{"name":"electrode_loc", "kind":"namevalue", "type":["string cell"]}
     ]
-  }	
+  },	
+  
+  "Model_Pipeline.Model_Pipeline":
+  {
+    "inputs":
+    [
+	{"name":"model_algo", "kind":"namevalue", "type":[["char"],["choices = {'any file name in DL pipelines'}"]]},
+	{"name":"oversample_train_data", "kind":"namevalue", "type":["logical"]},
+	{"name":"augment_train_data", "kind":"namevalue", "type":["logical"]},
+	{"name":"training_options", "kind":"namevalue", "type":["trainingOptions"]},
+	{"name":"criterion_class", "kind":"namevalue", "type":["string"]},
+	{"name":"criterion", "kind":"namevalue", "type":["string"]},
+	{"name":"criterion_thres", "kind":"namevalue", "type":["double"]},
+	{"name":"confidence_range", "kind":"namevalue", "type":["double"]},
+	{"name":"cool_time_range", "kind":"namevalue", "type":["double"]}
+    ]
+  }
 }	

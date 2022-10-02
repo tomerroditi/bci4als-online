@@ -1,14 +1,10 @@
 classdef Segments < handle
-    properties (SetAccess = protected, GetAccess = protected)
-        file_name
-
-        signal
+    properties (SetAccess = protected)
         pipeline
-        segments_signal             
+        segments_signal            
         segments_features % extracted features
         segments_ends_idx % the sample index that each segment ends in
         labels
-        
     end
 
     methods (Access = public)
@@ -18,39 +14,14 @@ classdef Segments < handle
                 return
             end
             obj.pipeline = pipeline;
-            obj.signal = signal;
             obj.labels = Labels_Handler(pipeline.class_names, pipeline.class_markers);
 
-            obj.segment_signal();
-
-            segment_utils = Segments_Utils(obj.pipeline);
-
-            bool_array = segment_utils.is_unphysiological(obj.segments_signal, obj.segments_ends_idx, signal.get_filtered_signal);
-
-            obj.reject_unphysiological_segments(bool_array);
+            obj.segment_signal(signal);
             
-            obj.segments_signal = segment_utils.filter(obj.segments_signal);
-            obj.segments_signal = segment_utils.create_sequence(obj.segments_signal);
-            obj.segments_signal = segment_utils.normalize(obj.segments_signal);
-            obj.segments_features = segment_utils.extract_features(obj.segments_signal);
-        end
-
-        %% 
-        function bool = isempty(obj)
-            if isempty(obj.segments_signal)
-                bool = true;
-            else
-                bool = false;
-            end
-        end
-        
-        function clear_segments(obj)
-            obj.segments_signal = [];
-            obj.segments_features = [];
-        end
-        
-        function set_file_name(obj, name)
-            obj.file_name = name;
+            obj.segments_signal = Segments_Utils.filter(obj.segments_signal, obj.pipeline);
+            obj.segments_signal = Segments_Utils.create_sequence(obj.segments_signal, obj.pipeline);
+            obj.segments_signal = Segments_Utils.normalize(obj.segments_signal, obj.pipeline);
+            obj.segments_features = Segments_Utils.extract_features(obj.segments_signal, obj.pipeline);
         end
 
         %% getters
@@ -61,93 +32,126 @@ classdef Segments < handle
         function segments_ends_idx = get_segments_ends_idx(obj)
             segments_ends_idx = obj.segments_ends_idx;
         end
-        
-        function data_store = get_data_store(obj, oversample)
-            if oversample
-                data_label_cell = obj.data_label_cell_oversampled();
-            else
-                data_label_cell = obj.data_label_cell();
-            end
-            data_store = arrayDatastore(data_label_cell, 'ReadSize', 1, 'IterationDimension', 1, 'OutputType', 'same');
+
+        function [time_series, features, labels] = get_segments_data(obj)
+            time_series = obj.segments_signal;
+            features = obj.segments_features;
+            labels = obj.get_labels();
         end
-end
+
+        function data_label_cell = data_label_cell(obj, args)
+            arguments
+                obj
+                args.data_type = [];
+                args.oversampled = false
+            end
+
+            if isempty(args.data_type)
+                if isempty(obj.segments_features)
+                    args.data_type = 'time series';
+                else
+                    args.data_type = 'features';
+                end
+            end
+            
+            if args.oversampled
+                obj.oversample();
+            end
+
+            labels_array = obj.labels.get_cell_of_categorical_labels();
+            if strcmp(args.data_type, 'time series')
+                data = obj.segments_signal;
+            elseif strcmp(args.data_type, 'features')
+                data = obj.segments_features;
+            else
+                error(['data type "' args.data_type '" is not supported, choose from {"features", "time series"}']);
+            end
+
+            if args.oversampled
+                obj.undo_oversample();
+            end
+
+            if isempty(data)
+                data_label_cell = [];
+                return
+            end
+            
+            data = squeeze(num2cell(data, [1,2,3,4]));
+            data_label_cell = [data, labels_array];
+        end
+
+        function data_label_cell = data_label_cell_oversampled_only(obj, args)
+            arguments
+                obj
+                args.data_type
+            end
+
+            data_label_cell = obj.data_label_cell(data_type = args.data_type, oversampled = true);
+            last_original_segment_idx = length(obj.segments_ends_idx);
+            data_label_cell = data_label_cell(last_original_segment_idx + 1:end, :);
+        end
+    
+        function clear_segments(obj)
+            obj.segments_signal = [];
+            obj.segments_features = [];
+        end
+        
+    end
     
     methods (Access = protected)
-        function segment_signal(obj)
-            if strcmp(obj.pipeline.segmentation_method, 'continuous')
-                obj.continuous_segmentation();
-            else
-                obj.discrete_segmentation(); % not implemented yet
-            end
+
+        function segment_signal(obj, signal)
+            obj.continuous_segmentation(signal);
+
             % adjust segments dims to match matlab NN input layers - [Spatial Spatial Channel Batch]
             % we have a fixed Channel dim that equals 1...
+            % if you create a sequence it will turn into [Spatial Spatial Channel sequence Batch]
             obj.segments_signal = permute(obj.segments_signal, [1 2 4 3]);  
         end
 
-        function continuous_segmentation(obj)
-            segments_step_size = obj.pipeline.segments_step_size_sec;
-            buffer_end_size = obj.pipeline.buffer_end;
-
-            % initialize a place holder for segments_signal
-            num_segments = obj.calc_number_of_segments();
-            num_samples_in_segment = obj.num_samples_in_segment('BC');
-            num_electrodes = obj.signal.get_num_electrodes(); 
+        function continuous_segmentation(obj, signal)
+            % initialize place holders
+            signal_len = size(signal.get_signal, 2);
+            num_segments = obj.calc_number_of_segments(signal_len);
+            num_samples_in_segment = obj.num_samples_in_segment('B');
+            num_electrodes = signal.get_num_electrodes(); 
             obj.segments_signal = zeros(num_electrodes, num_samples_in_segment, num_segments);
-            
             obj.segments_ends_idx = zeros(num_segments, 1);
+            labels_str_cell = cell(num_segments,1);
 
+            reject_idx = [];
             start_idx = 1;
-            step_size = floor(segments_step_size*obj.pipeline.sample_rate);
+            buffer_end_len = obj.pipeline.buffer_end;
+            step_size = floor(obj.pipeline.segments_step_size_sec*obj.pipeline.sample_rate);
+
             for i = 1:num_segments
-                % create the ith segment and its label
-                data_indices = (start_idx : start_idx + num_samples_in_segment - 1); % data indices to segment
-                obj.segments_signal(:,:,i) = obj.signal.get_sub_signal_by_indices(data_indices); % enter the current segment into segments
-                obj.segments_ends_idx(i) = data_indices(end) - buffer_end_size;
-
-                labels_indices = obj.data_indices_to_label_indices(data_indices);
-                samples_labels = obj.signal.get_labels_by_indices(labels_indices);
-                label = obj.label_from_samples_labels(samples_labels);
-                obj.labels.append(label)
-
-                start_idx = start_idx + step_size; % add step size to the starting index
-            end
-        end
-
-        function num_segments = calc_number_of_segments(obj)
-            switch obj.pipeline.segmentation_method
-                case 'continuous'
-                    step_size = floor(obj.pipeline.segments_step_size_sec*obj.pipeline.sample_rate);
-                    num_samples = obj.num_samples_in_segment('BC');
-                    num_segments = floor((size(obj.signal,2) - num_samples)/step_size) + 1;
-                case 'discrete'
-
-            end
-        end
-
-        function indices = data_indices_to_label_indices(obj, indices)
-            sequence_len = obj.pipeline.sequence_len;
-            seq_step_size = floor(obj.pipeline.sequence_step_size*obj.pipeline.sample_rate);
-            % consider only the indices of the last segment in the sequence
-            indices = indices(seq_step_size*(sequence_len - 1) + 1: end); 
-        end
-
-        function label = label_from_samples_labels(obj, samples_labels)
-            label = 'idle'; % we will label as idle if no class passes the threshold percentage
-            segment_threshold = obj.pipeline.segment_labeling_threshold;
-            curr_labels = unique(samples_labels);
-            for j = 1:length(curr_labels)
-                class_percent = sum(samples_labels == curr_labels(j))/length(samples_labels);
-                if class_percent >= segment_threshold 
-                    label = curr_labels(j);
-                    break
+                data_indices = (start_idx : start_idx + num_samples_in_segment - 1);
+                indices_for_physo_check = data_indices(obj.pipeline.buffer_start + 1:end - obj.pipeline.buffer_end);
+                if signal.is_physiological_at(indices_for_physo_check)
+                    % create the ith segment and its label
+                    obj.segments_signal(:,:,i) = signal.get_sub_signal_from(data_indices); 
+                    obj.segments_ends_idx(i) = data_indices(end) - buffer_end_len;
+    
+                    labels_indices = obj.data_indices_to_label_indices(data_indices);
+                    samples_labels = signal.get_labels_by_indices(labels_indices);
+                    labels_str_cell{i} = obj.str_label_from_samples_labels(samples_labels);
+                else 
+                    reject_idx(end + 1) = i; %#ok<AGROW> 
                 end
+                start_idx = start_idx + step_size; 
             end
+            % remove unused segments data
+            obj.segments_signal(:,:,reject_idx) = [];
+            obj.segments_ends_idx(reject_idx) = [];
+            labels_str_cell(reject_idx) = [];
+
+            obj.labels.set_labels(labels_str_cell)
         end
-       
-        function reject_unphysiological_segments(obj, reject_indices)
-            obj.segments_signal(:,:,:,reject_indices) = [];
-            obj.segments_ends_idx(reject_indices) = [];
-            obj.labels.reject_by_idx(reject_indices);
+
+        function num_segments = calc_number_of_segments(obj, num_samples_in_signal)
+            step_size = floor(obj.pipeline.segments_step_size_sec*obj.pipeline.sample_rate);
+            num_samples_in_segment = obj.num_samples_in_segment('B');
+            num_segments = floor((num_samples_in_signal - num_samples_in_segment)/step_size) + 1;
         end
 
         function num_samples = num_samples_in_segment(obj, string)
@@ -159,51 +163,50 @@ end
             sample_rate        = obj.pipeline.sample_rate;
 
             switch string
-                case 'BC' % Before (filters and sequencing), Continuous 
+                case 'B' % Before (filters and sequencing) 
                     num_samples = floor(segment_duration*sample_rate) + buffer_start + buffer_end +...
                                   floor(sequence_step_size*sample_rate)*(sequence_len - 1);
-                case 'AC' % After (filters and sequencing), Continuous 
+                case 'A' % After (filters and sequencing) 
                     num_samples = floor(segment_duration*sample_rate);
-                case 'BD' % Before (filters and sequencing), Discrete 
-
-                case 'AD' % After (filters and sequencing), Discrete 
             end
         end
 
+        function indices = data_indices_to_label_indices(obj, indices)
+            % trim the buffers indices
+            buffer_start = obj.pipeline.buffer_start;
+            buffer_end = obj.pipeline.buffer_end;
+            indices = indices(buffer_start + 1: end - buffer_end);
 
+            % consider only the last segment indices in the sequence
+            sequence_len = obj.pipeline.sequence_len;
+            seq_step_size = floor(obj.pipeline.sequence_step_size*obj.pipeline.sample_rate);
+            indices = indices(seq_step_size*(sequence_len - 1) + 1: end); 
+        end
 
+        function label = str_label_from_samples_labels(obj, samples_labels)
+            threshold = obj.pipeline.segment_labeling_threshold;
+            catg = categories(samples_labels);
+            count = countcats(samples_labels);
+            percentages = count./length(samples_labels);
 
-        function data_label_cell = data_label_cell(obj)
-            % create cells of the labels - notice we need to feed the datastore with
-            % categorical instead of numeric labels
-            categorical_labels = obj.labels.get_cell_of_categorical_labels();
-            if isempty(obj.segments_features)
-                data = obj.segments_signal;
+            idle_idx = strcmpi(catg, 'idle');
+            catg(idle_idx) = [];
+            percentages(idle_idx) = [];
+
+            if any(percentages > threshold)
+                [~, I] = max(percentages); % in case we got more than 1 class
+                label = catg{I};
             else
-                data = obj.segments_features;
+                label = 'idle'; 
             end
-            data = squeeze(num2cell(data, [1,2,3,4]));
-            data_label_cell = [data, categorical_labels];
         end
 
-        function data_label_cell = data_label_cell_oversampled(obj)
-            obj.oversample();
-            data_label_cell = obj.data_label_cell();
-            obj.undo_oversample();
-        end
 
-        function data_label_cell = data_label_cell_oversampled_only(obj)
-            obj.oversample();
-            data_label_cell = obj.data_label_cell();
-            data_label_cell = data_label_cell(:, length(obj.segments_ends_idx) + 1:end);
-            obj.undo_oversample();
-        end
-        
         function oversample(obj)
-            labels = obj.labels.get_labels();
-            obj.segments_features = segment_preprocessing.oversample(obj.segments_features, labels);
-            [obj.segments_signal, labels] = segment_preprocessing.oversample(obj.segments_signal, labels);
-            obj.labels.set_labels(labels);
+            labels_array = obj.labels.get_labels();
+            obj.segments_features = Segments_Utils.oversample(obj.segments_features, labels_array);
+            [obj.segments_signal, labels_array] = Segments_Utils.oversample(obj.segments_signal, labels_array);
+            obj.labels.set_labels(labels_array);
         end
 
         function undo_oversample(obj)
@@ -216,5 +219,6 @@ end
             categorical_labels(num_original_segments + 1:end) = [];
             obj.labels.set_labels(categorical_labels);
         end
+ 
     end
 end
